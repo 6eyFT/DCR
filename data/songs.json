@@ -1,0 +1,187 @@
+[
+    {
+        "id": 1,
+        "track": "assets/songs/Betty Hutton - He's A Demon.wav",
+        "artist": "Betty Hutton"
+    },
+    {
+        "id": 2,
+        "track": "assets/songs/Betty Hutton - It's A Man.wav",
+        "artist": "Betty Hutton"
+    },
+    {
+        "id": 3,
+        "track": "assets/songs/Big Maybelle - Whole Lotta Shakin' Going On.wav",
+        "artist": "Big Maybelle"
+    },
+    {
+        "id": 4,
+        "track": "assets/songs/Billie Holiday - Crazy He Calls Me.wav",
+        "artist": "Billie Holiday"
+    },
+    {
+        "id": 5,
+        "track": "assets/songs/Billie Holiday - Easy Living.wav",
+        "artist": "Billie Holiday"
+    },
+    {
+        "id": 6,
+        "track": "assets/songs/Billy Ward and The Dominoes - Sixty Minute Man.wav",
+        "artist": "Billy Ward and The Dominoes"
+    },
+    {
+        "id": 7,
+        "track": "assets/songs/Bing Crosby - Accentuate The Positive.wav",
+        "artist": "Bing Crosby"
+    },
+    {
+        "id": 8,
+        "track": "assets/songs/Bing Crosby - Pistol Packin' Mama.wav",
+        "artist": "Bing Crosby"
+    },
+    {
+        "id": 9,
+        "track": "assets/songs/Bob Crosby - Dear Hearts And Gentle People.wav",
+        "artist": "Bob Crosby"
+    },
+    {
+        "id": 10,
+        "track": "assets/songs/Bob Crosby - Happy Times.wav",
+        "artist": "Bob Crosby"
+    },
+    {
+        "id": 11,
+        "track": "assets/songs/Bob Crosby - Way Back Home.wav",
+        "artist": "Bob Crosby"
+    },
+    {
+        "id": 12,
+        "track": "assets/songs/Cole Porter - Anything Goes.wav",
+        "artist": "Cole Porter"
+    },
+    {
+        "id": 13,
+        "track": "assets/songs/Connie Allen - Rocket 69.wav",
+        "artist": "Connie Allen"
+    },
+    {
+        "id": 14,
+        "track": "assets/songs/Danny Kaye - Civilization.wav",
+        "artist": "Danny Kaye"
+    },
+    {
+        "id": 15,
+        "track": "assets/songs/Dion - The Wanderer.wav",
+        "artist": "Dion"
+    },
+    {
+        "id": 16,
+        "track": "assets/songs/Ella Fitzgerald - Into Each Life.wav",
+        "artist": "Ella Fitzgerald"
+    },
+    {
+        "id": 17,
+        "track": "assets/songs/Ella Fitzgerald - Undecided.wav",
+        "artist": "Ella Fitzgerald"
+    },
+    {
+        "id": 18,
+        "track": "assets/songs/Elton Britt - Uranium Fever.wav",
+        "artist": "Elton Britt"
+    },
+    {
+        "id": 19,
+        "track": "assets/songs/Frankie Carle - One More Tomorrow.wav",
+        "artist": "Frankie Carle"
+    },
+    {
+        "id": 20,
+        "track": "assets/songs/Johnny Mercer - Personality.wav",
+        "artist": "Johnny Mercer"
+    },
+    {
+        "id": 21,
+        "track": "assets/songs/Louis Jordan - Keep A Knockin'.wav",
+        "artist": "Louis Jordan"
+    },
+    {
+        "id": 22,
+        "track": "assets/songs/Nat King Cole - Orange Colored Sky.wav",
+        "artist": "Nat King Cole"
+    },
+    {
+        "id": 23,
+        "track": "assets/songs/Ray Smith - Right Behind You Baby.wav",
+        "artist": "Ray Smith"
+    },
+    {
+        "id": 24,
+        "track": "assets/songs/Roy Brown - Butcher Pete Part 1.wav",
+        "artist": "Roy Brown"
+    },
+    {
+        "id": 25,
+        "track": "assets/songs/Roy Brown - Butcher Pete Part 2.wav",
+        "artist": "Roy Brown"
+    },
+    {
+        "id": 26,
+        "track": "assets/songs/Roy Brown - Good Rockin' Tonight.wav",
+        "artist": "Roy Brown"
+    },
+    {
+        "id": 27,
+        "track": "assets/songs/Roy Brown - Mighty Mighty Man.wav",
+        "artist": "Roy Brown"
+    },
+    {
+        "id": 28,
+        "track": "assets/songs/Sheldon Allman - Crawl Out Through The Fallout.wav",
+        "artist": "Sheldon Allman"
+    },
+    {
+        "id": 29,
+        "track": "assets/songs/Skeeter Davis - The End Of The World.wav",
+        "artist": "Skeeter Davis"
+    },
+    {
+        "id": 30,
+        "track": "assets/songs/Tex Beneke - A Wonderful Guy.wav",
+        "artist": "Tex Beneke"
+    },
+    {
+        "id": 31,
+        "track": "assets/songs/The Five Stars - Atom Bomb Baby.wav",
+        "artist": "Atom Bomb Baby"
+    },
+    {
+        "id": 32,
+        "track": "assets/songs/The Ink Spots - I Don't Want To Set.wav",
+        "artist": "The Ink Spots"
+    },
+    {
+        "id": 33,
+        "track": "assets/songs/The Ink Spots - It's All Over But The Crying.wav",
+        "artist": "The Ink Spots"
+    },
+    {
+        "id": 34,
+        "track": "assets/songs/The Ink Spots - Maybe.wav",
+        "artist": "The Ink Spots"
+    },
+    {
+        "id": 35,
+        "track": "assets/songs/The Three Suns - Worry Worry Worry.wav",
+        "artist": "The Three Suns"
+    },
+    {
+        "id": 36,
+        "track": "assets/songs/Warren Smith - Uranium Rock.wav",
+        "artist": "Warren Smith"
+    },
+    {
+        "id": 37,
+        "track": "assets/songs/Wynonie Harris - Grandma Plays The Numbers.wav",
+        "artist": "Wynonie Harris"
+    }
+]

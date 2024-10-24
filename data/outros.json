@@ -1,0 +1,77 @@
+[
+    {
+        "artist": "Betty Hutton",
+        "song": "assets/songs/Betty Hutton - He's A Demon.wav",
+        "outro": "assets/outros/Betty Huton (outro).wav"
+    },
+    {
+        "artist": "Bing Crosby",
+        "song": "assets/songs/Bing Crosby - Song Title.wav",
+        "outro": "assets/outros/Bing Crosby (outro).wav"
+    },
+    {
+        "artist": "Bob Crosby",
+        "song": "assets/songs/Bob Crosby - Song Title.wav",
+        "outro": "assets/outros/Bob Crosby (outro).wav"
+    },
+    {
+        "artist": "Bob Crosby",
+        "song": "assets/songs/Bob Crosby - Song Title 2.wav",
+        "outro": "assets/outros/Bob Crosby 2 (outro).wav"
+    },
+    {
+        "artist": "The Five Stars",
+        "song": "assets/songs/The Five Stars - Song Title.wav",
+        "outro": "assets/outros/The Five Stars (outro).wav"
+    },
+    {
+        "artist": "Tex Beneke",
+        "song": "assets/songs/Tex Beneke - A Wonderful Guy.wav",
+        "outro": "assets/outros/A Wonderful Guy (outro).wav"
+    },
+    {
+        "artist": "Roy Brown",
+        "song": "assets/songs/Roy Brown - Butcher Pete Part 1.wav",
+        "outro": "assets/outros/Butcher Pete (outro).wav"
+    },
+    {
+        "artist": "The Ink Spots",
+        "song": "assets/songs/The Ink Spots - It's All Over But The Crying.wav",
+        "outro": "assets/outros/It's All Over But The Crying (outro).wav"
+    },
+    {
+        "artist": "Louis Jordan",
+        "song": "assets/songs/Louis Jordan - Keep A Knockin'.wav",
+        "outro": "assets/outros/Keep A Knockin' (outro).wav"
+    },
+    {
+        "artist": "Roy Brown",
+        "song": "assets/songs/Roy Brown - Mighty Mighty Man.wav",
+        "outro": "assets/outros/Mighty Mighty Man (outro).wav"
+    },
+    {
+        "artist": "Frankie Carle",
+        "song": "assets/songs/Frankie Carle - One More Tomorrow.wav",
+        "outro": "assets/outros/One More Tomorrow (outro).wav"
+    },
+    {
+        "artist": "Nat King Cole",
+        "song": "assets/songs/Nat King Cole - Orange Colored Sky.wav",
+        "outro": "assets/outros/Orange Colored Sky (outro).wav"
+    },
+    {
+        "artist": "Johnny Mercer",
+        "song": "assets/songs/Johnny Mercer - Personality.wav",
+        "outro": "assets/outros/Personality (outro).wav"
+    },
+    {
+        "artist": "Elton Britt",
+        "song": "assets/songs/Elton Britt - Uranium Fever.wav",
+        "outro": "assets/outros/Uranium Fever (outro).wav"
+    },
+    {
+        "artist": "Big Maybelle",
+        "song": "assets/songs/Big Maybelle - Whole Lotta Shakin' Going On.wav",
+        "outro": "assets/outros/Whole Lotta Shakin' (outro).wav"
+    }
+]

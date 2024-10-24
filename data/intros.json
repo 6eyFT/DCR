@@ -1,0 +1,189 @@
+[
+    {
+        "artist": "Billie Holiday",
+        "intro": "assets/intros/Billie Holiday (intro).wav"
+    },
+    {
+        "artist": "Billie Holiday",
+        "intro": "assets/intros/Billie Holiday 2 (intro).wav"
+    },
+    {
+        "artist": "Bing Crosby",
+        "intro": "assets/intros/Bing Crosby (intro).wav"
+    },
+    {
+        "artist": "Bing Crosby",
+        "intro": "assets/intros/Bing Crosby 2 (intro).wav"
+    },
+    {
+        "artist": "Bob Crosby",
+        "intro": "assets/intros/Bob Crosby (intro).wav"
+    },
+    {
+        "artist": "Bob Crosby",
+        "intro": "assets/intros/Bob Crosby 2 (intro).wav"
+    },
+    {
+        "artist": "Bob Crosby",
+        "intro": "assets/intros/Bob Crosby 3 (intro).wav"
+    },
+    {
+        "artist": "Bob Crosby",
+        "intro": "assets/intros/Bob Crosby 4 (intro).wav"
+    },
+    {
+        "artist": "Cole Porter",
+        "intro": "assets/intros/Cole Porter (intro).wav"
+    },
+    {
+        "artist": "Cole Porter",
+        "intro": "assets/intros/Cole Porter 2 (intro).wav"
+    },
+    {
+        "artist": "Ella Fitzgerald",
+        "intro": "assets/intros/Ella Fitzgerald (intro).wav"
+    },
+    {
+        "artist": "Ella Fitzgerald",
+        "intro": "assets/intros/Ella Fitzgerald 2 (intro).wav"
+    },
+    {
+        "artist": "Ella Fitzgerald",
+        "intro": "assets/intros/Ella Fitzgerald 3 (intro).wav"
+    },
+    {
+        "artist": "Ella Fitzgerald",
+        "intro": "assets/intros/Ella Fitzgerald 4 (intro).wav"
+    },
+    {
+        "artist": "Roy Brown",
+        "intro": "assets/intros/Roy Brown (intro).wav"
+    },
+    {
+        "artist": "The Ink Spots",
+        "intro": "assets/intros/The Ink Spots (intro).wav"
+    },
+    {
+        "artist": "The Ink Spots",
+        "intro": "assets/intros/The Ink Spots 2 (intro).wav"
+    },
+    {
+        "artist": "The Ink Spots",
+        "intro": "assets/intros/The Ink Spots 3 (intro).wav"
+    },
+    {
+        "artist": "Bing Crosby",
+        "song": "assets/songs/Bing Crosby - Accentuate The Positive.wav",
+        "intro": "assets/intros/Accentuate The Positive (intro).wav"
+    },
+    {
+        "artist": "Cole Porter",
+        "song": "assets/songs/Cole Porter - Anything Goes.wav",
+        "intro": "assets/intros/Anything Goes (intro).wav"
+    },
+    {
+        "artist": "Cole Porter",
+        "song": "assets/songs/Cole Porter - Anything Goes.wav",
+        "intro": "assets/intros/Anything Goes 2 (intro).wav"
+    },
+    {
+        "artist": "The Five Stars",
+        "song": "assets/songs/The Five Stars - Atom Bomb Baby.wav",
+        "intro": "assets/intros/Atom Bomb Baby (intro).wav"
+    },
+    {
+        "artist": "The Five Stars",
+        "song": "assets/songs/The Five Stars - Atom Bomb Baby.wav",
+        "intro": "assets/intros/Atom Bomb Baby 2 (intro).wav"
+    },
+    {
+        "artist": "Roy Brown",
+        "song": "assets/songs/Roy Brown - Butcher Pete Part 1.wav",
+        "intro": "assets/intros/Butcher Pete (intro).wav"
+    },
+    {
+        "artist": "Roy Brown",
+        "song": "assets/songs/Roy Brown - Butcher Pete Part 1.wav",
+        "intro": "assets/intros/Butcher Pete 2 (intro).wav"
+    },
+    {
+        "artist": "Roy Brown",
+        "song": "assets/songs/Roy Brown - Butcher Pete Part 2.wav",
+        "intro": "assets/intros/Butcher Pete p2 (intro).wav"
+    },
+    {
+        "artist": "Danny Kaye",
+        "song": "assets/songs/Danny Kaye - Civilization.wav",
+        "intro": "assets/intros/Civilization (intro).wav"
+    },
+    {
+        "artist": "Billie Holiday",
+        "song": "assets/songs/Billie Holiday - Crazy He Calls Me.wav",
+        "intro": "assets/intros/Crazy He Calls Me (intro).wav"
+    },
+    {
+        "artist": "Bob Crosby",
+        "song": "assets/songs/Bob Crosby - Dear Hearts And Gentle People.wav",
+        "intro": "assets/intros/Dear Heart's & Gentle People (intro).wav"
+    },
+    {
+        "artist": "Billie Holiday",
+        "song": "assets/songs/Billie Holiday - Easy Living.wav",
+        "intro": "assets/intros/Easy Living (intro).wav"
+    },
+    {
+        "artist": "Billie Holiday",
+        "song": "assets/songs/Billie Holiday - Easy Living.wav",
+        "intro": "assets/intros/Easy Living 2 (intro).wav"
+    },
+    {
+        "artist": "Skeeter Davis",
+        "song": "assets/songs/Skeeter Davis - The End Of The World.wav",
+        "intro": "assets/intros/End Of The World (intro).wav"
+    },
+    {
+        "artist": "Roy Brown",
+        "song": "assets/songs/Roy Brown - Good Rockin' Tonight.wav",
+        "intro": "assets/intros/Good Rockin' Tonight (intro).wav"
+    },
+    {
+        "artist": "The Ink Spots",
+        "song": "assets/songs/The Ink Spots - I Don't Want To Set.wav",
+        "intro": "assets/intros/I Don't Want To Set The World On Fire (intro).wav"
+    },
+    {
+        "artist": "Ella Fitzgerald",
+        "song": "assets/songs/Ella Fitzgerald - Into Each Life.wav",
+        "intro": "assets/intros/Into Each Life (intro).wav"
+    },
+    {
+        "artist": "Betty Hutton",
+        "song": "assets/songs/Betty Hutton - It's A Man.wav",
+        "intro": "assets/intros/It's A Man (intro).wav"
+    },
+    {
+        "artist": "Louis Jordan",
+        "song": "assets/songs/Louis Jordan - Keep A Knockin'.wav",
+        "intro": "assets/intros/Keep A Knockin' (intro).wav"
+    },
+    {
+        "artist": "The Ink Spots",
+        "song": "assets/songs/The Ink Spots - Maybe.wav",
+        "intro": "assets/intros/Maybe (intro).wav"
+    },
+    {
+        "artist": "Roy Brown",
+        "song": "assets/songs/Roy Brown - Mighty Mighty Man.wav",
+        "intro": "assets/intros/Mighty Mighty Man (intro).wav"
+    },
+    {
+        "artist": "Nat King Cole",
+        "song": "assets/songs/Nat King Cole - Orange Colored Sky.wav",
+        "intro": "assets/intros/Orange Colored Sky (intro).wav"
+    },
+    {
+        "artist": "Johnny Mercer",
+        "song": "assets/songs/Johnny Mercer - Personality.wav",
+        "intro": "assets/intros/Personality (intro).wav"
+    }
+]
