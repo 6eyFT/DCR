@@ -16,6 +16,12 @@ This backlog is for work that should improve Diamond City Radio over time withou
 - Suggested acceptance criteria: startup failures exit early with actionable error messages instead of tracebacks or partial playback state.
 - Risk / priority: high priority, low to medium risk.
 
+### Validate WSLg / Pulse Playback Quality End-To-End
+- Why it matters: startup and backend selection can be stabilized in code, but audible crackle/static under WSLg still needs empirical listening checks against the real Pulse/RDP sink.
+- Rough scope: verify real playback after backend and mixer tuning, compare buffer sizes if artifacts remain, and decide whether any remaining issues are environment-specific or asset/mastering-related.
+- Suggested acceptance criteria: playback is subjectively clean on the target WSLg machine, or the remaining defect is narrowed to a specific unresolved cause with documented follow-up steps.
+- Risk / priority: high priority, medium risk.
+
 ### Add Smoke Tests For Playback Selection Logic
 - Why it matters: the console and GUI paths both contain custom playback logic, and regressions are easy to introduce without noticing.
 - Rough scope: add tests around song rotation, ad rotation, intro/outro selection, and missing-asset fallback behavior using mocked mixer/audio calls.

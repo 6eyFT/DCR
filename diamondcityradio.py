@@ -1,14 +1,16 @@
 import random
+import sys
 import time
 
 import pygame
 
+from audio_runtime import AudioInitializationError, consume_dummy_audio_request, initialize_audio
 from load_data import asset_exists, load_data, resolve_project_path
 
 
 class RadioApp:
-    def __init__(self):
-        pygame.mixer.init()
+    def __init__(self, dummy_audio_requested=False):
+        initialize_audio("Diamond City Radio", dummy_audio_requested=dummy_audio_requested)
 
         self.songs = load_data("data/songs.json")
         self.intros = load_data("data/intros.json")
@@ -174,10 +176,20 @@ class RadioApp:
             self.loop_count += 1
 
 
-def main():
-    radio_app = RadioApp()
+def main(argv=None):
+    dummy_audio_requested, remaining_args = consume_dummy_audio_request(argv)
+    if argv is None:
+        sys.argv = [sys.argv[0], *remaining_args]
+
+    try:
+        radio_app = RadioApp(dummy_audio_requested=dummy_audio_requested)
+    except AudioInitializationError as error:
+        print(error, file=sys.stderr)
+        return 1
+
     radio_app.autoplay()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

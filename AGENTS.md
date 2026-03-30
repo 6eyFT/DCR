@@ -18,6 +18,7 @@ This repo is an older personal project. Treat it like a stabilization and profes
 
 - [`diamondcityradio.py`](/home/six/code/projects/DCR/diamondcityradio.py)
 - [`_radio_gui.py`](/home/six/code/projects/DCR/_radio_gui.py)
+- [`audio_runtime.py`](/home/six/code/projects/DCR/audio_runtime.py)
 - [`load_data.py`](/home/six/code/projects/DCR/load_data.py)
 - [`pyproject.toml`](/home/six/code/projects/DCR/pyproject.toml)
 - [`poetry.toml`](/home/six/code/projects/DCR/poetry.toml)
@@ -49,13 +50,25 @@ GUI entrypoint:
 poetry run python _radio_gui.py
 ```
 
+Dummy-audio testing paths:
+
+```bash
+poetry run python diamondcityradio.py --dummy-audio
+poetry run python _radio_gui.py --dummy-audio
+DCR_DUMMY_AUDIO=1 poetry run python diamondcityradio.py
+```
+
 Notes:
 
 - Poetry is configured to create an in-project `.venv/`.
 - If the shell's `python` does not automatically follow [`.python-version`](/home/six/code/projects/DCR/.python-version), explicitly bind Poetry with `poetry env use "$(pyenv which python)"`.
 - `tkinter` is expected from the system Python installation.
 - Both entrypoints assume the local media files exist under `assets/`.
-- `pygame` needs a working audio device. If mixer initialization fails, treat that as an environment issue first.
+- `pygame` needs a working audio device unless dummy audio is explicitly requested.
+- Do not silently force dummy audio in code. Use `--dummy-audio` or `DCR_DUMMY_AUDIO=1` for headless/testing sessions.
+- On WSLg, prefer Pulse automatically only when the environment is clearly WSL + `/mnt/wslg/PulseServer` exists, and respect user-set `SDL_AUDIODRIVER` first.
+- `DCR_AUDIO_BACKEND` is the app-specific real-audio backend override for debugging or environment-specific forcing.
+- WSLg Pulse should use the tuned mixer settings in [`audio_runtime.py`](/home/six/code/projects/DCR/audio_runtime.py): `48000 Hz`, `16-bit`, `stereo`, `buffer=2048`.
 
 ## Test And Validation
 
@@ -63,7 +76,7 @@ Current lightweight validation commands:
 
 ```bash
 poetry run python -m unittest discover -s tests
-poetry run python -m py_compile diamondcityradio.py _radio_gui.py load_data.py tests/test_data_integrity.py
+poetry run python -m py_compile diamondcityradio.py _radio_gui.py audio_runtime.py load_data.py tests/test_data_integrity.py tests/test_audio_runtime.py
 poetry run python -c "import diamondcityradio, _radio_gui"
 ```
 

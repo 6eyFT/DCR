@@ -52,6 +52,38 @@ Tkinter GUI:
 poetry run python _radio_gui.py
 ```
 
+On WSLg, the app now auto-prefers the Pulse backend when it detects `/mnt/wslg/PulseServer` on a WSL kernel, and it uses a `48 kHz / 16-bit / stereo / 2048-buffer` mixer profile to better match the local song library and reduce crackle under Pulse.
+
+Console autoplay with dummy audio:
+
+```bash
+poetry run python diamondcityradio.py --dummy-audio
+```
+
+Console autoplay with dummy audio via environment variable:
+
+```bash
+DCR_DUMMY_AUDIO=1 poetry run python diamondcityradio.py
+```
+
+GUI with dummy audio:
+
+```bash
+poetry run python _radio_gui.py --dummy-audio
+```
+
+If you need to force the real WSLg Pulse path explicitly while debugging:
+
+```bash
+DCR_AUDIO_BACKEND=pulse poetry run python _radio_gui.py
+```
+
+If your shell/session needs the Pulse socket spelled out explicitly:
+
+```bash
+SDL_AUDIODRIVER=pulse PULSE_SERVER=unix:/mnt/wslg/PulseServer poetry run python _radio_gui.py
+```
+
 ## Validation
 
 Tests:
@@ -63,7 +95,7 @@ poetry run python -m unittest discover -s tests
 Compile/syntax checks:
 
 ```bash
-poetry run python -m py_compile diamondcityradio.py _radio_gui.py load_data.py tests/test_data_integrity.py
+poetry run python -m py_compile diamondcityradio.py _radio_gui.py audio_runtime.py load_data.py tests/test_data_integrity.py tests/test_audio_runtime.py
 ```
 
 Import smoke check:
@@ -77,4 +109,5 @@ poetry run python -c "import diamondcityradio, _radio_gui"
 - Use Poetry as the only maintained dependency workflow for this repo. There is no hand-maintained `requirements.txt`.
 - Do not commit local virtualenv directories. `.venv/` is the expected local Poetry environment and is ignored by git.
 - Both entrypoints expect the local `assets/` tree and `data/*.json` catalogs to stay in sync.
-- If mixer initialization fails during real playback, that is usually an audio-device or SDL environment issue rather than a packaging issue.
+- If mixer initialization fails during real playback, the app now exits with a friendly message that points to `--dummy-audio` and `DCR_DUMMY_AUDIO=1` for headless or server-like testing.
+- If WSLg is detected, the app prefers Pulse automatically unless you already set `SDL_AUDIODRIVER`, or you explicitly override with `DCR_AUDIO_BACKEND`.

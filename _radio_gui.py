@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 import threading
 import time
 import tkinter as tk
@@ -8,12 +9,13 @@ from tkinter import ttk
 import pygame
 from PIL import Image, ImageTk
 
+from audio_runtime import AudioInitializationError, consume_dummy_audio_request, initialize_audio
 from load_data import asset_exists, load_data, resolve_project_path
 
 
 class RadioApp:
-    def __init__(self, root):
-        pygame.mixer.init()
+    def __init__(self, root, dummy_audio_requested=False):
+        initialize_audio("Diamond City Radio GUI", dummy_audio_requested=dummy_audio_requested)
 
         self.songs = load_data("data/songs.json")
         self.intros = load_data("data/intros.json")
@@ -262,7 +264,25 @@ class RadioApp:
         return next_song
 
 
+def main(argv=None):
+    dummy_audio_requested, remaining_args = consume_dummy_audio_request(argv)
+    if argv is None:
+        sys.argv = [sys.argv[0], *remaining_args]
+
+    root = None
+    try:
+        initialize_audio("Diamond City Radio GUI", dummy_audio_requested=dummy_audio_requested)
+        root = tk.Tk()
+        radio_app = RadioApp(root, dummy_audio_requested=dummy_audio_requested)
+    except AudioInitializationError as error:
+        if root is not None:
+            root.destroy()
+        print(error, file=sys.stderr)
+        return 1
+
+    radio_app.root.mainloop()
+    return 0
+
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    radio_app = RadioApp(root)
-    root.mainloop()
+    raise SystemExit(main())
