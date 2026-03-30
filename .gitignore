@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.venv/
 venv/
 assets/**/*.wav
 .DS_Store
@@ -9,3 +10,4 @@ Thumbs.db
 *.log
 *.env
 .env
+.pytest_cache/

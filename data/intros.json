@@ -124,7 +124,7 @@
     {
         "artist": "Bob Crosby",
         "song": "assets/songs/Bob Crosby - Dear Hearts And Gentle People.wav",
-        "intro": "assets/intros/Dear Heart's & Gentle People (intro).wav"
+        "intro": "assets/intros/Dear Hearts And Gentle People (intro).wav"
     },
     {
         "artist": "Billie Holiday",
@@ -155,11 +155,6 @@
         "artist": "Ella Fitzgerald",
         "song": "assets/songs/Ella Fitzgerald - Into Each Life.wav",
         "intro": "assets/intros/Into Each Life (intro).wav"
-    },
-    {
-        "artist": "Betty Hutton",
-        "song": "assets/songs/Betty Hutton - It's A Man.wav",
-        "intro": "assets/intros/It's A Man (intro).wav"
     },
     {
         "artist": "Louis Jordan",
