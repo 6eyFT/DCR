@@ -10,7 +10,7 @@ This repo is an older personal project. Treat it like a stabilization and profes
 
 - `diamondcityradio.py`: console/autoplay entrypoint. Loads catalog JSON, uses `pygame` mixer, and loops songs, intros, outros, and ads.
 - `_radio_gui.py`: Tkinter GUI entrypoint. Separate playback flow with the same catalog data and `pygame` backend.
-- `load_data.py`: shared JSON/path helper. All repo-relative paths should flow through here.
+- `catalog_loader.py`: authoritative typed catalog loader, validator, and repo-relative path helper. All catalog loading and repo-relative paths should flow through here.
 - `data/*.json`: media catalog. These files are runtime-critical and tightly coupled to local asset filenames.
 - `assets/`: local songs, intros, outros, ads, and GIF artwork. Much of this tree is intentionally ignored from git because of media size/licensing.
 
@@ -19,7 +19,7 @@ This repo is an older personal project. Treat it like a stabilization and profes
 - [`diamondcityradio.py`](/home/six/code/projects/DCR/diamondcityradio.py)
 - [`_radio_gui.py`](/home/six/code/projects/DCR/_radio_gui.py)
 - [`audio_runtime.py`](/home/six/code/projects/DCR/audio_runtime.py)
-- [`load_data.py`](/home/six/code/projects/DCR/load_data.py)
+- [`catalog_loader.py`](/home/six/code/projects/DCR/catalog_loader.py)
 - [`pyproject.toml`](/home/six/code/projects/DCR/pyproject.toml)
 - [`poetry.toml`](/home/six/code/projects/DCR/poetry.toml)
 - [`.python-version`](/home/six/code/projects/DCR/.python-version)
@@ -76,7 +76,7 @@ Current lightweight validation commands:
 
 ```bash
 poetry run python -m unittest discover -s tests
-poetry run python -m py_compile diamondcityradio.py _radio_gui.py audio_runtime.py load_data.py tests/test_data_integrity.py tests/test_audio_runtime.py
+poetry run python -m py_compile diamondcityradio.py _radio_gui.py audio_runtime.py catalog_loader.py tests/test_catalog_loader.py tests/test_data_integrity.py tests/test_audio_runtime.py
 poetry run python -c "import diamondcityradio, _radio_gui"
 ```
 

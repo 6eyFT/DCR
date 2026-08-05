@@ -10,18 +10,19 @@ import pygame
 from PIL import Image, ImageTk
 
 from audio_runtime import AudioInitializationError, consume_dummy_audio_request, initialize_audio
-from load_data import asset_exists, load_data, resolve_project_path
+from catalog_loader import CatalogValidationError, asset_exists, load_catalogs, resolve_project_path
 
 
 class RadioApp:
     def __init__(self, root, dummy_audio_requested=False):
         initialize_audio("Diamond City Radio GUI", dummy_audio_requested=dummy_audio_requested)
 
-        self.songs = load_data("data/songs.json")
-        self.intros = load_data("data/intros.json")
-        self.outros = load_data("data/outros.json")
-        self.ads = load_data("data/ads.json")
-        self.ad_intros = load_data("data/ad_intros.json")
+        catalogs = load_catalogs()
+        self.songs = catalogs.songs
+        self.intros = catalogs.intros
+        self.outros = catalogs.outros
+        self.ads = catalogs.ads
+        self.ad_intros = catalogs.ad_intros
 
         self.ad_interval = 10
         self.cycle_count = 0
@@ -119,9 +120,9 @@ class RadioApp:
         try:
             while self.playing:
                 next_song = self.get_next_song()
-                self.update_current_track(next_song["track"])
+                self.update_current_track(next_song.track)
                 self.play_intro(next_song)
-                self.play_audio(next_song["track"])
+                self.play_audio(next_song.track)
                 self.play_outro(next_song)
                 self.cycle_count += 1
 
@@ -157,11 +158,11 @@ class RadioApp:
 
     def play_ad(self):
         available_ads = [
-            ad["ad"] for ad in self.ads if asset_exists(ad["ad"]) and ad["ad"] not in self.ad_history
+            ad.ad for ad in self.ads if asset_exists(ad.ad) and ad.ad not in self.ad_history
         ]
         if not available_ads:
             self.ad_history = []
-            available_ads = [ad["ad"] for ad in self.ads if asset_exists(ad["ad"])]
+            available_ads = [ad.ad for ad in self.ads if asset_exists(ad.ad)]
 
         if not available_ads:
             print("No ads available to play.")
@@ -177,7 +178,7 @@ class RadioApp:
         return played
 
     def play_ad_intro(self):
-        available_ad_intros = [entry["ad_intro"] for entry in self.ad_intros if asset_exists(entry["ad_intro"])]
+        available_ad_intros = [entry.ad_intro for entry in self.ad_intros if asset_exists(entry.ad_intro)]
         if not available_ad_intros:
             print("No ad intros available to play.")
             return False
@@ -187,18 +188,18 @@ class RadioApp:
         return self.play_audio(ad_intro_to_play)
 
     def play_intro(self, song):
-        artist = song["artist"]
-        song_track = song["track"]
+        artist = song.artist
+        song_track = song.track
 
         intros_for_song = [
-            intro["intro"]
+            intro.intro
             for intro in self.intros
-            if intro.get("song") == song_track and asset_exists(intro["intro"])
+            if intro.song == song_track and asset_exists(intro.intro)
         ]
         intros_for_artist = [
-            intro["intro"]
+            intro.intro
             for intro in self.intros
-            if intro["artist"] == artist and "song" not in intro and asset_exists(intro["intro"])
+            if intro.artist == artist and intro.song is None and asset_exists(intro.intro)
         ]
 
         if intros_for_song:
@@ -212,18 +213,18 @@ class RadioApp:
         return self.play_audio(random.choice(choices))
 
     def play_outro(self, song):
-        artist = song["artist"]
-        song_track = song["track"]
+        artist = song.artist
+        song_track = song.track
 
         outros_for_song = [
-            outro["outro"]
+            outro.outro
             for outro in self.outros
-            if outro.get("song") == song_track and asset_exists(outro["outro"])
+            if outro.song == song_track and asset_exists(outro.outro)
         ]
         outros_for_artist = [
-            outro["outro"]
+            outro.outro
             for outro in self.outros
-            if outro.get("artist") == artist and "song" not in outro and asset_exists(outro["outro"])
+            if outro.artist == artist and outro.song is None and asset_exists(outro.outro)
         ]
 
         if outros_for_song and outros_for_artist:
@@ -242,7 +243,7 @@ class RadioApp:
         available_songs_to_play = [
             song
             for song in self.songs
-            if asset_exists(song["track"]) and song["track"] not in self.song_history
+            if asset_exists(song.track) and song.track not in self.song_history
         ]
 
         if not available_songs_to_play:
@@ -250,14 +251,14 @@ class RadioApp:
             available_songs_to_play = [
                 song
                 for song in self.songs
-                if asset_exists(song["track"]) and song["track"] not in self.song_history
+                if asset_exists(song.track) and song.track not in self.song_history
             ]
 
         if not available_songs_to_play:
             raise RuntimeError("No playable songs found in data/songs.json.")
 
         next_song = random.choice(available_songs_to_play)
-        self.song_history.insert(0, next_song["track"])
+        self.song_history.insert(0, next_song.track)
         if len(self.song_history) > 20:
             self.song_history.pop()
 
@@ -274,7 +275,7 @@ def main(argv=None):
         initialize_audio("Diamond City Radio GUI", dummy_audio_requested=dummy_audio_requested)
         root = tk.Tk()
         radio_app = RadioApp(root, dummy_audio_requested=dummy_audio_requested)
-    except AudioInitializationError as error:
+    except (AudioInitializationError, CatalogValidationError) as error:
         if root is not None:
             root.destroy()
         print(error, file=sys.stderr)
