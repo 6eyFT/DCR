@@ -1,119 +1,143 @@
-# Phase 4A Streaming Proof
+# Phase 4A/4B1 Streaming Proof
 
-This proof selects **Liquidsoap 2.2.4 or a patch-compatible 2.2.x release** as
-the streaming source layer. It is development evidence, not a production
-service definition.
+This is a development proof for Liquidsoap 2.2.4, not a production service or
+an Icecast configuration.
 
-## Decision
-
-The retained boundary is:
+## Retained architecture
 
 ```text
 StationScheduler -> PlaybackPlanner -> StreamingBlockPlayer
                                       -> LiquidsoapStreamingAdapter
                                       <-> streaming_bridge.py
-                                      <-> Liquidsoap request.dynamic
-                                      -> fallback silence -> MP3 output
+                                      <-> Liquidsoap request.queue
+                                      -> fallback silence -> local MP3 output
                                       -> future Icecast mount
 ```
 
-Python continues to select blocks, create `PlaybackEvent` metadata, and map
-terminal event results to scheduler outcomes. Liquidsoap is responsible for
-request decoding, `liq_cue_in`, format conversion, resampling, continuous
-fallback audio, encoding, and a future Icecast source connection. The
-Liquidsoap configuration has no song, intro/outro, advertisement, history, or
-cadence logic.
+Python owns selection, playback-event metadata, scheduler outcome mapping, and
+supervision of the Liquidsoap process. Liquidsoap owns request resolution,
+decoding, forward cueing, resampling, stereo conversion, encoding, and the
+continuous fallback clock. The Liquidsoap file contains no song, advertisement,
+history, or cadence policy.
 
-A direct Python/FFmpeg source would avoid Liquidsoap itself, but Python would
-then need to supervise per-file decoding, pipe gapless PCM into a durable
-encoder, keep silence flowing, update Icecast metadata separately, detect
-partial writes, restart subprocesses, and reconnect publication. That is more
-custom lifecycle code than this MVP needs. Liquidsoap adds one system service
-dependency but removes those responsibilities from application Python and is
-the smaller reliable production direction, subject to the runtime checks still
-listed below.
+A direct Python/FFmpeg source would require custom management of a persistent
+PCM pipe, gapless fallback, encoder restarts, partial writes, metadata updates,
+and future Icecast reconnection. The verified Liquidsoap boundary is smaller
+for this MVP despite adding one system runtime.
 
-## Control and data flow
+## Installed-version design
 
-`LiquidsoapStreamingAdapter.play(event)` permits one in-flight event and blocks
-until it receives an immutable `StreamingResult`. Liquidsoap polls the adapter
-through short-lived Unix-socket bridge connections. Each event is serialized as
-versioned JSON containing its path, type, display title, station name, artist,
-associated song, and cue offset. `streaming_bridge.py` converts it to one
-Liquidsoap `annotate:` request URI. Spaces, quotes, Unicode, and URI-special path
-characters are escaped before they reach Liquidsoap.
+Ubuntu's Liquidsoap 2.2.4 package advertises `request.dynamic`, but its callback
+does not type-check with a returned `request?`. `request.dynamic.list` accepts
+the callback but is deprecated. The proof therefore uses supported
+`request.queue.push`: a bounded background poll obtains one event, constructs a
+request, and pushes it onto the queue. The Python adapter allows only one
+in-flight event, so this is an event transport rather than a second playlist or
+scheduler.
 
-Liquidsoap reports an event start from `on_track` and completion from
-`source.on_end(delay=0.)`. A delivered request that never produces `on_track`
-becomes `start_failed` after the adapter's configured start timeout. Explicit
-terminal statuses are `completed`, `start_failed`, `interrupted`, and
-`connection_lost`. A separate bounded result timeout prevents an abruptly lost
-source from blocking station Python forever. Every bridge operation opens a
-fresh socket, so a dropped control connection does not poison later operations.
-Infinite `blank()` audio keeps the output clock active when no event is ready.
+The bridge returns an event ID and an annotated native absolute path on separate
+lines. The annotation carries media type, resolved path, display title, station
+name, artist, associated song, and requested start offset. Native paths are
+required because this Liquidsoap package treated percent-encoded `file:` paths
+as literal filenames.
 
-## Local prerequisites
+`liq_cue_in` was observable as metadata but did not alter decoded WAV output in
+the installed runtime. The retained configuration explicitly calls
+`source.seek` from `on_track`, logs both requested and actually applied offsets,
+then reports the start to Python. Completion is reported only after the exact
+request reaches Liquidsoap's `destroyed` lifecycle state. A request destroyed
+without `on_track` is `start_failed`.
 
-On Ubuntu 24.04, install the missing system runtimes manually:
+The adapter records monotonic submission, delivery, start, and finish times in
+its immutable terminal result. A concurrent socket handler prevents a waiting
+`next` poll from blocking start/end callbacks. The proof's process supervisor
+reports unexpected Liquidsoap exit as `connection_lost`; the same adapter can
+then serve a restarted runtime.
+
+## Prerequisites
+
+On Ubuntu 24.04:
 
 ```bash
 sudo apt update
-sudo apt install liquidsoap icecast2 ffmpeg
+sudo apt install -y liquidsoap ffmpeg
 ```
 
-Then verify versions and configuration syntax:
+Icecast is deliberately not installed or configured by this phase.
+
+Verify the installed tools and configuration:
 
 ```bash
 liquidsoap --version
-icecast2 -v
 ffmpeg -version
 ffprobe -version
 liquidsoap --check liquidsoap/dcr-proof.liq
 ```
 
-Do not put real Icecast credentials in this repository. The Phase 4A file uses
-encoded local output and does not configure an Icecast mount.
+## Run the proofs
 
-## Run the proof
-
-The clean-clone-safe transport proof uses generated WAV fixtures and an actual
-Unix socket, but deliberately does not claim to decode them:
+The standard clean-clone-safe transport proof uses generated WAV fixtures and
+the actual Unix-socket protocol, but no external decoder:
 
 ```bash
 poetry run python streaming_proof.py
 ```
 
-With Liquidsoap and FFmpeg installed, the runtime proof generates temporary WAV
-fixtures, converts the normal song to MP3, sends the required seven-event
-sequence, and writes a continuous 44.1 kHz stereo 128 kb/s MP3 output:
+The real runtime suite generates all media under a temporary directory. It runs
+the seven-event sequence with a WAV initial cue and again with an MP3 initial
+cue, verifies metadata from Liquidsoap logs, analyzes the first stable output
+frequency, probes the encoded files, exercises missing and invalid media,
+checks block outcome mappings, terminates Liquidsoap during a track, and starts
+a replacement runtime:
 
 ```bash
 poetry run python streaming_proof.py --liquidsoap \
-  --output /tmp/dcr-streaming-proof.mp3
-ffprobe -v error -show_streams -show_format /tmp/dcr-streaming-proof.mp3
+  --output /tmp/dcr-streaming-runtime.mp3
 ```
 
-Inspect `dcr_event_id`, `title`, `artist`, `station_name`,
-`dcr_associated_song`, `dcr_media_type`, and `liq_cue_in` in Liquidsoap's
-request/metadata logs. Independently compare decoded samples around the initial
-cue before calling cue accuracy exact; container-level MP3/VBR seeking may only
-be approximate.
+It retains two finite proof outputs:
 
-## Known limitations
+- `/tmp/dcr-streaming-runtime.mp3`
+- `/tmp/dcr-streaming-runtime-mp3-cue.mp3`
 
-- The current proof config targets Liquidsoap 2.2.4 and must pass
-  `liquidsoap --check` on the deployment machine before retention.
-- The Python socket protocol and outcome mapping are executable without private
-  media. Decoding, cue accuracy, resampling, encoded output, and callback timing
-  require the external runtime proof.
-- `source.on_end(delay=0.)` is the smallest completion signal available for this
-  proof. Phase 4 must verify that it represents emitted completion closely
-  enough for station counting, including output interruption near track end.
-- A start timeout distinguishes an unresolved/invalid delivered request from a
-  source that never fetched the event. The production timeout and health model
-  and the maximum event result timeout still need operational tuning.
-- The fallback proves the intended continuous-source topology. Zero-listener,
-  late-listener, two-listener synchronization, mount metadata, and Icecast
-  reconnect behavior remain Icecast integration checks for production Phase 4.
-- Raspberry Pi suitability is an architecture assessment until the exact Pi
-  model/OS is known and mixed-format decode plus MP3 encode CPU use is measured.
+The same suite is available as an opt-in integration test. It is skipped by the
+standard suite so clean clones do not require system packages:
+
+```bash
+DCR_RUN_LIQUIDSOAP_TESTS=1 poetry run python -m unittest \
+  tests.test_liquidsoap_runtime
+```
+
+Inspect an output independently with:
+
+```bash
+ffprobe -v error -show_streams -show_format \
+  /tmp/dcr-streaming-runtime.mp3
+```
+
+## Verified behavior and limitations
+
+- Generated mono 8 kHz PCM WAV and MP3 inputs decode and are converted to a
+  44.1 kHz stereo 128 kb/s MP3 output.
+- A 2.031377-second cue skips a 220 Hz opening region. The first stable encoded
+  regions measured 860-880 Hz against an 880 Hz source region for both WAV and
+  MP3 runs. Cueing is therefore materially verified but approximate after
+  frame-based seeking, resampling, and MP3 encoding; it is not sample-exact.
+- Liquidsoap logs every event ID and metadata field plus requested and applied
+  offsets. Metadata embedded in a future Icecast mount is not tested here.
+- Completion follows request destruction and occurred approximately 0.95-1.02
+  seconds after start for the 0.969-second cued fixtures. It is not inferred
+  merely from dequeue or `on_track`.
+- Encoded output begins before event submission, includes deliberate fallback
+  intervals, and remains active after the event sequence. The finite WAV- and
+  MP3-cue outputs were about 9.6 seconds each.
+- Missing and invalid media return `start_failed`. Real results preserve intro,
+  song, outro, advertisement-intro, and advertisement failure semantics.
+- Runtime termination returns `connection_lost`; a newly started Liquidsoap
+  process can accept and complete a later event through the same adapter.
+- Zero-listener behavior is represented by local file output, which advances
+  without a listener. Late-listener synchronization, two-listener equivalence,
+  mount metadata, publication failure, and reconnect behavior remain Icecast
+  phase work.
+- Raspberry Pi CPU use and package availability remain unmeasured until a
+  target Pi model and OS are selected.

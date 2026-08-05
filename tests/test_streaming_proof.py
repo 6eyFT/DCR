@@ -3,7 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from playback_events import MediaType, STATION_NAME
-from streaming_proof import build_proof_events, run_proof
+from streaming_proof import CUE_DURATION, build_proof_events, run_proof
 
 
 class DeterministicProofSequenceTests(unittest.TestCase):
@@ -26,9 +26,9 @@ class DeterministicProofSequenceTests(unittest.TestCase):
             self.assertTrue(all(Path(event.media_path).is_file() for event in events))
             self.assertTrue(all(event.station_name == STATION_NAME for event in events))
             self.assertGreater(events[0].start_offset, 0.0)
-            self.assertLess(events[0].start_offset, 0.2)
+            self.assertLess(events[0].start_offset, CUE_DURATION)
             self.assertTrue(all(event.start_offset == 0.0 for event in events[1:]))
-            self.assertEqual(events[0].artist, "Initial Artist")
+            self.assertEqual(events[0].artist, 'Initial Artist "Six" ☢')
             self.assertEqual(events[0].associated_song_title, "initial song")
             self.assertIsNone(events[-1].artist)
             self.assertIsNone(events[-1].associated_song_title)

@@ -31,6 +31,10 @@ class StreamingResult:
     event_id: str
     status: StreamingResultStatus
     detail: str | None = None
+    submitted_at: float | None = None
+    delivered_at: float | None = None
+    started_at: float | None = None
+    finished_at: float | None = None
 
     @property
     def completed(self) -> bool:
@@ -154,7 +158,9 @@ def send_bridge_command(
 class _PendingEvent:
     event_id: str
     event: PlaybackEvent
+    submitted_at: float
     state: str = "queued"
+    delivered_at: float | None = None
     started_at: float | None = None
     result: StreamingResult | None = None
 
@@ -230,7 +236,11 @@ class LiquidsoapStreamingAdapter:
 
                 event_id = f"dcr-{self._next_event_number:08d}"
                 self._next_event_number += 1
-                pending = _PendingEvent(event_id=event_id, event=event)
+                pending = _PendingEvent(
+                    event_id=event_id,
+                    event=event,
+                    submitted_at=time.monotonic(),
+                )
                 self._pending = pending
                 self._condition.notify_all()
 
@@ -242,8 +252,8 @@ class LiquidsoapStreamingAdapter:
                         result_deadline = pending.started_at + self._result_timeout
                         remaining = result_deadline - time.monotonic()
                         if remaining <= 0:
-                            pending.result = StreamingResult(
-                                event_id,
+                            pending.result = self._make_result(
+                                pending,
                                 StreamingResultStatus.CONNECTION_LOST,
                                 "streaming source stopped reporting during playback",
                             )
@@ -263,7 +273,7 @@ class LiquidsoapStreamingAdapter:
                             if pending.state == "delivered"
                             else "streaming source did not request the queued event"
                         )
-                        pending.result = StreamingResult(event_id, status, detail)
+                        pending.result = self._make_result(pending, status, detail)
                         break
                     self._condition.wait(timeout=remaining)
 
@@ -281,8 +291,8 @@ class LiquidsoapStreamingAdapter:
                 return
             self._closed = True
             if self._pending is not None and self._pending.result is None:
-                self._pending.result = StreamingResult(
-                    self._pending.event_id,
+                self._pending.result = self._make_result(
+                    self._pending,
                     StreamingResultStatus.INTERRUPTED,
                     "streaming adapter shut down cleanly",
                 )
@@ -307,22 +317,28 @@ class LiquidsoapStreamingAdapter:
             except OSError:
                 return
 
-            with connection:
-                try:
-                    request = _receive_json_line(connection)
-                    response = self._handle_command(request)
-                except (StreamingProtocolError, UnicodeError, json.JSONDecodeError) as error:
-                    response = {"type": "error", "reason": str(error)}
-                try:
-                    connection.sendall(
-                        (json.dumps(response, ensure_ascii=False) + "\n").encode(
-                            "utf-8"
-                        )
-                    )
-                except OSError:
-                    # Bridge clients are intentionally short-lived. A dropped
-                    # control connection must not stop the broker accept loop.
-                    continue
+            threading.Thread(
+                target=self._handle_connection,
+                args=(connection,),
+                name="dcr-streaming-control",
+                daemon=True,
+            ).start()
+
+    def _handle_connection(self, connection: socket.socket) -> None:
+        with connection:
+            try:
+                request = _receive_json_line(connection)
+                response = self._handle_command(request)
+            except (StreamingProtocolError, UnicodeError, json.JSONDecodeError) as error:
+                response = {"type": "error", "reason": str(error)}
+            try:
+                connection.sendall(
+                    (json.dumps(response, ensure_ascii=False) + "\n").encode("utf-8")
+                )
+            except OSError:
+                # Bridge clients are intentionally short-lived. A dropped
+                # control connection must not stop the broker accept loop.
+                pass
 
     def _handle_command(self, request: object) -> dict[str, object]:
         if not isinstance(request, dict):
@@ -355,6 +371,7 @@ class LiquidsoapStreamingAdapter:
             while not self._closed:
                 if self._pending is not None and self._pending.state == "queued":
                     self._pending.state = "delivered"
+                    self._pending.delivered_at = time.monotonic()
                     self._condition.notify_all()
                     return {
                         "type": "event",
@@ -404,7 +421,7 @@ class LiquidsoapStreamingAdapter:
                 raise StreamingProtocolError(
                     f"event {pending.event_id} cannot complete before it starts"
                 )
-            pending.result = StreamingResult(pending.event_id, status, detail)
+            pending.result = self._make_result(pending, status, detail)
             self._condition.notify_all()
             return {"type": "ack", "event_id": pending.event_id}
 
@@ -413,13 +430,34 @@ class LiquidsoapStreamingAdapter:
             raise StreamingProtocolError("source-loss detail must be a string or null")
         with self._condition:
             if self._pending is not None and self._pending.result is None:
-                self._pending.result = StreamingResult(
-                    self._pending.event_id,
+                self._pending.result = self._make_result(
+                    self._pending,
                     StreamingResultStatus.CONNECTION_LOST,
                     detail,
                 )
                 self._condition.notify_all()
             return {"type": "ack"}
+
+    def source_lost(self, detail: str) -> None:
+        """Wake an in-flight event when the supervised source process exits."""
+
+        self._mark_source_lost(detail)
+
+    @staticmethod
+    def _make_result(
+        pending: _PendingEvent,
+        status: StreamingResultStatus,
+        detail: str | None,
+    ) -> StreamingResult:
+        return StreamingResult(
+            event_id=pending.event_id,
+            status=status,
+            detail=detail,
+            submitted_at=pending.submitted_at,
+            delivered_at=pending.delivered_at,
+            started_at=pending.started_at,
+            finished_at=time.monotonic(),
+        )
 
     def _matching_pending(self, event_id: object) -> _PendingEvent:
         if not isinstance(event_id, str) or not event_id:

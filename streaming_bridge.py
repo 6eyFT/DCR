@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 from catalog_loader import PROJECT_ROOT
 from streaming_adapter import (
@@ -27,14 +26,17 @@ def liquidsoap_request_uri(
     media_path = Path(event.media_path)
     if not media_path.is_absolute():
         media_path = Path(project_root) / media_path
-    file_uri = media_path.resolve().as_uri()
+    resolved_path = str(media_path.resolve())
+    if "\n" in resolved_path or "\r" in resolved_path:
+        raise ValueError("Liquidsoap media paths cannot contain line breaks")
 
     metadata = [
         ("dcr_event_id", event_id),
         ("dcr_media_type", event.media_type.value),
+        ("dcr_media_path", resolved_path),
         ("title", event.display_title),
         ("station_name", event.station_name),
-        ("liq_cue_in", format(event.start_offset, ".17g")),
+        ("dcr_start_offset", format(event.start_offset, ".17g")),
     ]
     if event.artist is not None:
         metadata.append(("artist", event.artist))
@@ -44,7 +46,7 @@ def liquidsoap_request_uri(
     annotations = ",".join(
         f'{key}="{_escape_annotation(value)}"' for key, value in metadata
     )
-    return f"annotate:{annotations}:{quote(file_uri, safe=':/%')}"
+    return f"annotate:{annotations}:{resolved_path}"
 
 
 def _escape_annotation(value: str) -> str:
@@ -95,9 +97,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "next":
             response = send_bridge_command(args.socket, {"command": "next"})
             if response.get("type") in {"no_event", "shutdown"}:
-                return 3
+                print("DCR_NO_EVENT")
+                return 0
             if response.get("type") != "event":
                 raise RuntimeError(f"unexpected broker response: {response!r}")
+            print(response["event_id"])
             print(
                 liquidsoap_request_uri(
                     response["event_id"],

@@ -93,9 +93,10 @@ class EventSerializationTests(unittest.TestCase):
 
         self.assertTrue(uri.startswith("annotate:"))
         self.assertIn('dcr_event_id="dcr-00000001"', uri)
-        self.assertIn('liq_cue_in="9.25"', uri)
+        self.assertIn('dcr_media_path="/tmp/Diamond City Radio/assets/songs/', uri)
+        self.assertIn('dcr_start_offset="9.25"', uri)
         self.assertIn('title="A \\"quoted\\" title \\\\ with ☢"', uri)
-        self.assertIn("Space%20%231%2C%20%22quoted%22%20%E2%98%A2.MP3", uri)
+        self.assertIn('Space #1, "quoted" ☢.MP3', uri)
         self.assertNotIn("\nLive\n", uri)
 
     def test_nonzero_and_zero_offsets_are_transmitted_without_change(self):
@@ -160,6 +161,34 @@ class SocketBoundaryTests(unittest.TestCase):
 
         self.assertEqual(result.status, StreamingResultStatus.COMPLETED)
         self.assertTrue(result.completed)
+        self.assertLessEqual(result.submitted_at, result.delivered_at)
+        self.assertLessEqual(result.delivered_at, result.started_at)
+        self.assertLessEqual(result.started_at, result.finished_at)
+
+    def test_long_poll_does_not_block_lifecycle_callback(self):
+        submission = AsyncSubmission(self.adapter, event())
+        fetched = self.fetch()
+        self.start(fetched["event_id"])
+
+        waiting_response = {}
+
+        def wait_for_next():
+            waiting_response.update(
+                send_bridge_command(
+                    self.socket_path,
+                    {"command": "next"},
+                    timeout=1.0,
+                )
+            )
+
+        long_poll = threading.Thread(target=wait_for_next, daemon=True)
+        long_poll.start()
+        time.sleep(0.02)
+        self.result(fetched["event_id"], StreamingResultStatus.COMPLETED)
+
+        self.assertTrue(submission.finish().completed)
+        long_poll.join(timeout=1.0)
+        self.assertEqual(waiting_response["type"], "no_event")
 
     def test_start_failure_returns_to_python(self):
         submission = AsyncSubmission(self.adapter, event())

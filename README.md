@@ -108,16 +108,17 @@ Import smoke check:
 poetry run python -c "import diamondcityradio, _radio_gui"
 ```
 
-Phase 4A includes a clean-clone-safe Unix-socket transport proof for the
-proposed Liquidsoap boundary. It does not replace either current entrypoint and
-is not production-ready:
+Phase 4A/4B1 includes a clean-clone-safe Unix-socket transport proof and an
+opt-in real Liquidsoap runtime suite. It does not replace either current
+entrypoint and is not production-ready:
 
 ```bash
 poetry run python streaming_proof.py
+DCR_RUN_LIQUIDSOAP_TESTS=1 poetry run python -m unittest tests.test_liquidsoap_runtime
 ```
 
 See [docs/streaming-proof.md](docs/streaming-proof.md) for the architecture
-decision, system prerequisites, optional encoded-output proof, and limitations.
+decision, system prerequisites, verified encoded-output proof, and limitations.
 
 ## Notes
 
