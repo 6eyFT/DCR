@@ -108,6 +108,17 @@ Import smoke check:
 poetry run python -c "import diamondcityradio, _radio_gui"
 ```
 
+Phase 4A includes a clean-clone-safe Unix-socket transport proof for the
+proposed Liquidsoap boundary. It does not replace either current entrypoint and
+is not production-ready:
+
+```bash
+poetry run python streaming_proof.py
+```
+
+See [docs/streaming-proof.md](docs/streaming-proof.md) for the architecture
+decision, system prerequisites, optional encoded-output proof, and limitations.
+
 ## Notes
 
 - Use Poetry as the only maintained dependency workflow for this repo. There is no hand-maintained `requirements.txt`.
