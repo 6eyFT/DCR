@@ -3,7 +3,9 @@ __pycache__/
 *$py.class
 .venv/
 venv/
-assets/**/*.wav
+assets/**/*.[wW][aA][vV]
+assets/**/*.[mM][pP]3
+!assets/**/.gitkeep
 .DS_Store
 Thumbs.db
 *.egg-info/
