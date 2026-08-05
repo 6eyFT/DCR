@@ -99,7 +99,7 @@ catalogs with temporary placeholder audio.
 Compile/syntax checks:
 
 ```bash
-poetry run python -m py_compile diamondcityradio.py _radio_gui.py audio_runtime.py catalog_loader.py station_scheduler.py tests/test_catalog_loader.py tests/test_station_scheduler.py tests/test_entrypoint_scheduling.py tests/test_data_integrity.py tests/test_audio_runtime.py
+poetry run python -m py_compile diamondcityradio.py _radio_gui.py audio_runtime.py catalog_loader.py station_scheduler.py playback_events.py pygame_duration.py tests/test_catalog_loader.py tests/test_station_scheduler.py tests/test_playback_events.py tests/test_entrypoint_scheduling.py tests/test_data_integrity.py tests/test_audio_runtime.py
 ```
 
 Import smoke check:
@@ -116,5 +116,6 @@ poetry run python -c "import diamondcityradio, _radio_gui"
 - Starting either entrypoint expects the local `assets/` tree and `data/*.json` catalogs to stay in sync; importing the modules does not load catalogs or media.
 - Catalogs are loaded and validated together by `catalog_loader.py` before playback starts. Validation reports actionable schema, relationship, path, and supported-format problems in one aggregated error.
 - `station_scheduler.py` is the single station-policy implementation used by both entrypoints; playback outcomes determine song history and advertisement cadence.
+- `playback_events.py` converts scheduled blocks into immutable, metadata-bearing events. The initial song receives a duration-bounded random cue offset from the isolated pygame duration provider.
 - If mixer initialization fails during real playback, the app now exits with a friendly message that points to `--dummy-audio` and `DCR_DUMMY_AUDIO=1` for headless or server-like testing.
 - If WSLg is detected, the app prefers Pulse automatically unless you already set `SDL_AUDIODRIVER`, or you explicitly override with `DCR_AUDIO_BACKEND`.

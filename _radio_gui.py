@@ -1,4 +1,3 @@
-import os
 import random
 import sys
 import threading
@@ -11,6 +10,8 @@ from PIL import Image, ImageTk
 
 from audio_runtime import AudioInitializationError, consume_dummy_audio_request, initialize_audio
 from catalog_loader import CatalogValidationError, load_catalogs, resolve_project_path
+from playback_events import MediaType, PlaybackPlanner
+from pygame_duration import PygameDurationProvider
 from station_scheduler import (
     AdvertisementBlock,
     AdvertisementPlaybackOutcome,
@@ -20,13 +21,28 @@ from station_scheduler import (
 
 
 class RadioApp:
-    def __init__(self, root, dummy_audio_requested=False, random_source=None):
+    def __init__(
+        self,
+        root,
+        dummy_audio_requested=False,
+        random_source=None,
+        playback_random_source=None,
+        duration_provider=None,
+    ):
         initialize_audio("Diamond City Radio GUI", dummy_audio_requested=dummy_audio_requested)
 
         catalogs = load_catalogs()
         self.scheduler = StationScheduler(
             catalogs,
             random_source if random_source is not None else random.Random(),
+        )
+        self.playback_planner = PlaybackPlanner(
+            duration_provider
+            if duration_provider is not None
+            else PygameDurationProvider(),
+            playback_random_source
+            if playback_random_source is not None
+            else random.Random(),
         )
         self.playing = False
         self.current_track_length = 0
@@ -93,9 +109,13 @@ class RadioApp:
     def set_volume(self, volume):
         pygame.mixer.music.set_volume(float(volume))
 
-    def update_current_track(self, track_name):
-        display_name = os.path.splitext(os.path.basename(track_name))[0]
-        self.root.after(0, lambda: self.current_track_label.config(text=f"Current Track: {display_name}"))
+    def update_current_track(self, display_title):
+        self.root.after(
+            0,
+            lambda: self.current_track_label.config(
+                text=f"Current Track: {display_title}"
+            ),
+        )
 
     def update_track_time(self):
         if self.playing:
@@ -124,20 +144,27 @@ class RadioApp:
             self.playing = False
             print(f"Error: {error}")
 
-    def play_audio(self, track):
-        resolved_track = resolve_project_path(track)
+    def play_event(self, event):
+        self.update_current_track(event.display_title)
+        resolved_track = resolve_project_path(event.media_path)
         if not resolved_track.exists():
             print(f"Missing audio file: {resolved_track}")
             return False
 
         try:
             pygame.mixer.music.load(str(resolved_track))
-            pygame.mixer.music.play()
+            if event.start_offset:
+                pygame.mixer.music.play(start=event.start_offset)
+            else:
+                pygame.mixer.music.play()
             self.current_track_length = pygame.mixer.Sound(str(resolved_track)).get_length()
             while pygame.mixer.music.get_busy() and self.playing:
                 time.sleep(1)
         except pygame.error as error:
-            print(f"Could not play {resolved_track}: {error}")
+            print(
+                f"Could not play {event.media_type.value.lower()} "
+                f"'{event.display_title}' from {event.start_offset:.3f}s: {error}"
+            )
             return False
 
         return True
@@ -149,16 +176,27 @@ class RadioApp:
             self._play_song_block(block)
 
     def _play_song_block(self, block):
-        self.update_current_track(block.song.track)
+        events = self.playback_planner.plan(block)
+        intro_event = next(
+            (event for event in events if event.media_type is MediaType.INTRO),
+            None,
+        )
+        song_event = next(
+            event for event in events if event.media_type is MediaType.SONG
+        )
+        outro_event = next(
+            (event for event in events if event.media_type is MediaType.OUTRO),
+            None,
+        )
 
         intro_completed = None
-        if block.intro is not None:
-            intro_completed = self.play_audio(block.intro.intro)
+        if intro_event is not None:
+            intro_completed = self.play_event(intro_event)
 
-        song_completed = self.play_audio(block.song.track)
+        song_completed = self.play_event(song_event)
         outro_completed = None
-        if song_completed and block.outro is not None:
-            outro_completed = self.play_audio(block.outro.outro)
+        if song_completed and outro_event is not None:
+            outro_completed = self.play_event(outro_event)
 
         self.scheduler.report_outcome(
             block,
@@ -170,8 +208,8 @@ class RadioApp:
         )
 
     def _play_advertisement_block(self, block):
-        print(f"Now playing ad intro: '{block.intro.ad_intro}'")
-        intro_completed = self.play_audio(block.intro.ad_intro)
+        intro_event, advertisement_event = self.playback_planner.plan(block)
+        intro_completed = self.play_event(intro_event)
         if not intro_completed:
             self.scheduler.report_outcome(
                 block,
@@ -182,8 +220,7 @@ class RadioApp:
             )
             return
 
-        print(f"--- Playing Ad: '{block.advertisement.ad}' ---")
-        advertisement_completed = self.play_audio(block.advertisement.ad)
+        advertisement_completed = self.play_event(advertisement_event)
         self.scheduler.report_outcome(
             block,
             AdvertisementPlaybackOutcome(

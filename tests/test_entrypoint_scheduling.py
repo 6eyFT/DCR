@@ -1,3 +1,5 @@
+import contextlib
+import io
 import random
 import unittest
 from unittest import mock
@@ -5,6 +7,7 @@ from unittest import mock
 import _radio_gui
 import diamondcityradio
 from catalog_loader import Ad, AdIntro, Catalogs, Intro, Outro, Song
+from playback_events import MediaType, PlaybackEvent
 from station_scheduler import (
     AdvertisementBlock,
     AdvertisementPlaybackOutcome,
@@ -40,10 +43,30 @@ def advertisement_block():
     )
 
 
+def song_events():
+    return (
+        PlaybackEvent("intro.wav", MediaType.INTRO, "intro"),
+        PlaybackEvent("song.wav", MediaType.SONG, "song"),
+        PlaybackEvent("outro.wav", MediaType.OUTRO, "outro"),
+    )
+
+
+def advertisement_events():
+    return (
+        PlaybackEvent(
+            "ad-intro.wav",
+            MediaType.ADVERTISEMENT_INTRO,
+            "ad-intro",
+        ),
+        PlaybackEvent("ad.wav", MediaType.ADVERTISEMENT, "ad"),
+    )
+
+
 def playback_adapter(app_class):
     app = app_class.__new__(app_class)
     app.scheduler = mock.Mock()
-    app.play_audio = mock.Mock()
+    app.playback_planner = mock.Mock()
+    app.play_event = mock.Mock()
     if app_class is _radio_gui.RadioApp:
         app.update_current_track = mock.Mock()
     return app
@@ -92,16 +115,18 @@ class EntrypointPlaybackOutcomeTests(unittest.TestCase):
             with self.subTest(entrypoint=app_class.__module__):
                 app = playback_adapter(app_class)
                 block = song_block()
-                app.play_audio.side_effect = [False, True, False]
+                events = song_events()
+                app.playback_planner.plan.return_value = events
+                app.play_event.side_effect = [False, True, False]
 
                 app.play_scheduled_block(block)
 
                 self.assertEqual(
-                    app.play_audio.call_args_list,
+                    app.play_event.call_args_list,
                     [
-                        mock.call("intro.wav"),
-                        mock.call("song.wav"),
-                        mock.call("outro.wav"),
+                        mock.call(events[0]),
+                        mock.call(events[1]),
+                        mock.call(events[2]),
                     ],
                 )
                 app.scheduler.report_outcome.assert_called_once_with(
@@ -118,13 +143,15 @@ class EntrypointPlaybackOutcomeTests(unittest.TestCase):
             with self.subTest(entrypoint=app_class.__module__):
                 app = playback_adapter(app_class)
                 block = song_block()
-                app.play_audio.side_effect = [True, False]
+                events = song_events()
+                app.playback_planner.plan.return_value = events
+                app.play_event.side_effect = [True, False]
 
                 app.play_scheduled_block(block)
 
                 self.assertEqual(
-                    app.play_audio.call_args_list,
-                    [mock.call("intro.wav"), mock.call("song.wav")],
+                    app.play_event.call_args_list,
+                    [mock.call(events[0]), mock.call(events[1])],
                 )
                 app.scheduler.report_outcome.assert_called_once_with(
                     block,
@@ -140,11 +167,13 @@ class EntrypointPlaybackOutcomeTests(unittest.TestCase):
             with self.subTest(entrypoint=app_class.__module__):
                 app = playback_adapter(app_class)
                 block = advertisement_block()
-                app.play_audio.return_value = False
+                events = advertisement_events()
+                app.playback_planner.plan.return_value = events
+                app.play_event.return_value = False
 
                 app.play_scheduled_block(block)
 
-                app.play_audio.assert_called_once_with("ad-intro.wav")
+                app.play_event.assert_called_once_with(events[0])
                 app.scheduler.report_outcome.assert_called_once_with(
                     block,
                     AdvertisementPlaybackOutcome(
@@ -158,13 +187,15 @@ class EntrypointPlaybackOutcomeTests(unittest.TestCase):
             with self.subTest(entrypoint=app_class.__module__):
                 app = playback_adapter(app_class)
                 block = advertisement_block()
-                app.play_audio.return_value = True
+                events = advertisement_events()
+                app.playback_planner.plan.return_value = events
+                app.play_event.return_value = True
 
                 app.play_scheduled_block(block)
 
                 self.assertEqual(
-                    app.play_audio.call_args_list,
-                    [mock.call("ad-intro.wav"), mock.call("ad.wav")],
+                    app.play_event.call_args_list,
+                    [mock.call(events[0]), mock.call(events[1])],
                 )
                 app.scheduler.report_outcome.assert_called_once_with(
                     block,
@@ -185,6 +216,116 @@ class EntrypointPlaybackOutcomeTests(unittest.TestCase):
 
         app.play_scheduled_block.assert_called_once_with(block)
         self.assertFalse(app.playing)
+
+
+class EntrypointMetadataTests(unittest.TestCase):
+    def test_console_output_uses_event_type_and_extensionless_title(self):
+        app = diamondcityradio.RadioApp.__new__(diamondcityradio.RadioApp)
+        event = PlaybackEvent(
+            "assets/songs/Example Song.wav",
+            MediaType.SONG,
+            "Example Song",
+            start_offset=12.5,
+        )
+        missing_path = mock.Mock()
+        missing_path.exists.return_value = False
+
+        with (
+            mock.patch.object(
+                diamondcityradio,
+                "resolve_project_path",
+                return_value=missing_path,
+            ),
+            io.StringIO() as output,
+            contextlib.redirect_stdout(output),
+        ):
+            played = app.play_event(event)
+            console_output = output.getvalue()
+
+        self.assertFalse(played)
+        self.assertIn("Now attempting Song: Example Song from 12.500s", console_output)
+
+    def test_console_passes_event_offset_to_pygame(self):
+        app = diamondcityradio.RadioApp.__new__(diamondcityradio.RadioApp)
+        event = PlaybackEvent(
+            "assets/songs/Example Song.wav",
+            MediaType.SONG,
+            "Example Song",
+            start_offset=12.5,
+        )
+        resolved_path = mock.Mock()
+        resolved_path.exists.return_value = True
+        resolved_path.__str__ = mock.Mock(return_value="resolved.wav")
+
+        with (
+            mock.patch.object(
+                diamondcityradio,
+                "resolve_project_path",
+                return_value=resolved_path,
+            ),
+            mock.patch.object(diamondcityradio.pygame.mixer.music, "load"),
+            mock.patch.object(
+                diamondcityradio.pygame.mixer.music,
+                "play",
+            ) as play,
+            mock.patch.object(
+                diamondcityradio.pygame.mixer.music,
+                "get_busy",
+                return_value=False,
+            ),
+            io.StringIO() as output,
+            contextlib.redirect_stdout(output),
+        ):
+            played = app.play_event(event)
+
+        self.assertTrue(played)
+        play.assert_called_once_with(start=12.5)
+
+    def test_gui_title_updates_for_currently_attempted_event(self):
+        app = _radio_gui.RadioApp.__new__(_radio_gui.RadioApp)
+        app.root = mock.Mock()
+        app.root.after.side_effect = lambda _delay, callback: callback()
+        app.current_track_label = mock.Mock()
+        app.current_track_length = 0
+        app.playing = True
+        event = PlaybackEvent(
+            "assets/intros/Current Intro.wav",
+            MediaType.INTRO,
+            "Current Intro",
+            start_offset=12.5,
+        )
+        resolved_path = mock.Mock()
+        resolved_path.exists.return_value = True
+        resolved_path.__str__ = mock.Mock(return_value="resolved.wav")
+        sound = mock.Mock()
+        sound.get_length.return_value = 30.0
+
+        with (
+            mock.patch.object(
+                _radio_gui,
+                "resolve_project_path",
+                return_value=resolved_path,
+            ),
+            mock.patch.object(_radio_gui.pygame.mixer.music, "load"),
+            mock.patch.object(_radio_gui.pygame.mixer.music, "play") as play,
+            mock.patch.object(
+                _radio_gui.pygame.mixer.music,
+                "get_busy",
+                return_value=False,
+            ),
+            mock.patch.object(
+                _radio_gui.pygame.mixer,
+                "Sound",
+                return_value=sound,
+            ),
+        ):
+            played = app.play_event(event)
+
+        self.assertTrue(played)
+        app.current_track_label.config.assert_called_once_with(
+            text="Current Track: Current Intro"
+        )
+        play.assert_called_once_with(start=12.5)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,8 @@ This repo is an older personal project. Treat it like a stabilization and profes
 - `_radio_gui.py`: Tkinter GUI entrypoint. Retains GUI and playback responsibilities while using the shared scheduler.
 - `catalog_loader.py`: authoritative typed catalog loader, validator, and repo-relative path helper. All catalog loading and repo-relative paths should flow through here.
 - `station_scheduler.py`: authoritative audio-independent station policy, including sequence selection, completion history, and advertisement cadence.
+- `playback_events.py`: audio-independent event metadata and scheduled-block playback planning, including the initial-song cue offset.
+- `pygame_duration.py`: isolated, cached pygame duration provider for the local player.
 - `data/*.json`: media catalog. These files are runtime-critical and tightly coupled to local asset filenames.
 - `assets/`: local songs, intros, outros, ads, and GIF artwork. Much of this tree is intentionally ignored from git because of media size/licensing.
 
@@ -22,6 +24,8 @@ This repo is an older personal project. Treat it like a stabilization and profes
 - [`audio_runtime.py`](/home/six/code/projects/DCR/audio_runtime.py)
 - [`catalog_loader.py`](/home/six/code/projects/DCR/catalog_loader.py)
 - [`station_scheduler.py`](/home/six/code/projects/DCR/station_scheduler.py)
+- [`playback_events.py`](/home/six/code/projects/DCR/playback_events.py)
+- [`pygame_duration.py`](/home/six/code/projects/DCR/pygame_duration.py)
 - [`pyproject.toml`](/home/six/code/projects/DCR/pyproject.toml)
 - [`poetry.toml`](/home/six/code/projects/DCR/poetry.toml)
 - [`.python-version`](/home/six/code/projects/DCR/.python-version)
@@ -78,7 +82,7 @@ Current lightweight validation commands:
 
 ```bash
 poetry run python -m unittest discover -s tests
-poetry run python -m py_compile diamondcityradio.py _radio_gui.py audio_runtime.py catalog_loader.py station_scheduler.py tests/test_catalog_loader.py tests/test_station_scheduler.py tests/test_entrypoint_scheduling.py tests/test_data_integrity.py tests/test_audio_runtime.py
+poetry run python -m py_compile diamondcityradio.py _radio_gui.py audio_runtime.py catalog_loader.py station_scheduler.py playback_events.py pygame_duration.py tests/test_catalog_loader.py tests/test_station_scheduler.py tests/test_playback_events.py tests/test_entrypoint_scheduling.py tests/test_data_integrity.py tests/test_audio_runtime.py
 poetry run python -c "import diamondcityradio, _radio_gui"
 ```
 
