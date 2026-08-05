@@ -92,6 +92,10 @@ Tests:
 poetry run python -m unittest discover -s tests
 ```
 
+Private-media integrity tests run when local WAV or MP3 assets are present and
+are skipped in clean clones. Fixture-based tests still validate the tracked
+catalogs with temporary placeholder audio.
+
 Compile/syntax checks:
 
 ```bash
@@ -109,7 +113,7 @@ poetry run python -c "import diamondcityradio, _radio_gui"
 - Use Poetry as the only maintained dependency workflow for this repo. There is no hand-maintained `requirements.txt`.
 - Do not commit local virtualenv directories. `.venv/` is the expected local Poetry environment and is ignored by git.
 - WAV and MP3 files under `assets/` are local-only; tracked `.gitkeep` files preserve the expected media directory layout in clean clones.
-- Both entrypoints expect the local `assets/` tree and `data/*.json` catalogs to stay in sync.
-- Catalogs are loaded and validated together by `catalog_loader.py` before playback starts. Validation reports all discovered schema, relationship, path, and supported-format problems in one error.
+- Starting either entrypoint expects the local `assets/` tree and `data/*.json` catalogs to stay in sync; importing the modules does not load catalogs or media.
+- Catalogs are loaded and validated together by `catalog_loader.py` before playback starts. Validation reports actionable schema, relationship, path, and supported-format problems in one aggregated error.
 - If mixer initialization fails during real playback, the app now exits with a friendly message that points to `--dummy-audio` and `DCR_DUMMY_AUDIO=1` for headless or server-like testing.
 - If WSLg is detected, the app prefers Pulse automatically unless you already set `SDL_AUDIODRIVER`, or you explicitly override with `DCR_AUDIO_BACKEND`.

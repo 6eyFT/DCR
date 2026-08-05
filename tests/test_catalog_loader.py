@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 from catalog_loader import (
@@ -10,6 +11,7 @@ from catalog_loader import (
     CatalogValidationError,
     Intro,
     Outro,
+    PROJECT_ROOT,
     Song,
     load_catalogs,
 )
@@ -92,6 +94,34 @@ class CatalogLoaderTests(unittest.TestCase):
         self.assertIsInstance(catalogs.outros[0], Outro)
         self.assertIsInstance(catalogs.ads[0], Ad)
         self.assertIsInstance(catalogs.ad_intros[0], AdIntro)
+
+    def test_typed_records_and_catalog_collections_are_immutable(self):
+        catalogs = load_catalogs(self.fixture.root)
+
+        with self.assertRaises(FrozenInstanceError):
+            catalogs.songs[0].artist = "Changed Artist"
+        with self.assertRaises(TypeError):
+            catalogs.songs[0] = catalogs.songs[0]
+
+    def test_existing_repository_catalogs_accept_placeholder_audio(self):
+        audio_fields = {"track", "intro", "outro", "song", "ad", "ad_intro"}
+        for name in self.fixture.catalogs:
+            records = json.loads(
+                (PROJECT_ROOT / "data" / f"{name}.json").read_text(encoding="utf-8")
+            )
+            (self.fixture.root / "data" / f"{name}.json").write_text(
+                json.dumps(records),
+                encoding="utf-8",
+            )
+            for record in records:
+                for field in audio_fields:
+                    value = record.get(field)
+                    if isinstance(value, str):
+                        self.fixture.add_audio(value)
+
+        catalogs = load_catalogs(self.fixture.root)
+
+        self.assertGreater(len(catalogs.songs), 0)
 
     def test_malformed_json(self):
         (self.fixture.root / "data" / "songs.json").write_text("[{", encoding="utf-8")
@@ -180,6 +210,32 @@ class CatalogLoaderTests(unittest.TestCase):
             str(context.exception),
         )
 
+    def test_required_id_rejects_non_integer_values(self):
+        for invalid_id in (True, False, "1", 1.0, None):
+            with self.subTest(invalid_id=invalid_id):
+                self.fixture.catalogs["songs"][0]["id"] = invalid_id
+                self.fixture.write("songs")
+
+                with self.assert_catalog_error() as context:
+                    load_catalogs(self.fixture.root)
+
+                message = str(context.exception)
+                self.assertIn("songs.json: record 1, field 'id'", message)
+                self.assertIn("expected int", message)
+
+    def test_present_optional_id_rejects_non_integer_values(self):
+        for invalid_id in (True, False, "1", 1.0, None):
+            with self.subTest(invalid_id=invalid_id):
+                self.fixture.catalogs["ads"][0]["id"] = invalid_id
+                self.fixture.write("ads")
+
+                with self.assert_catalog_error() as context:
+                    load_catalogs(self.fixture.root)
+
+                message = str(context.exception)
+                self.assertIn("ads.json: record 1, field 'id'", message)
+                self.assertIn("expected int", message)
+
     def test_unsupported_extension(self):
         unsupported = "assets/ads/Test Ad.ogg"
         self.fixture.add_audio(unsupported)
@@ -202,6 +258,54 @@ class CatalogLoaderTests(unittest.TestCase):
         message = str(context.exception)
         self.assertIn("ads.json: record 1, field 'ad'", message)
         self.assertIn("referenced audio file does not exist", message)
+
+    def test_absolute_audio_path_is_rejected(self):
+        self.fixture.catalogs["ads"][0]["ad"] = str(
+            self.fixture.root / "assets" / "ads" / "Test Ad.mP3"
+        )
+        self.fixture.write("ads")
+
+        with self.assert_catalog_error() as context:
+            load_catalogs(self.fixture.root)
+
+        message = str(context.exception)
+        self.assertIn("ads.json: record 1, field 'ad'", message)
+        self.assertIn("must be relative to the repository root", message)
+        self.assertNotIn("referenced audio file does not exist", message)
+
+    def test_windows_absolute_audio_path_is_rejected(self):
+        self.fixture.catalogs["ads"][0]["ad"] = r"C:\\Audio\\Test Ad.mp3"
+        self.fixture.write("ads")
+
+        with self.assert_catalog_error() as context:
+            load_catalogs(self.fixture.root)
+
+        self.assertIn(
+            "ads.json: record 1, field 'ad': must be relative to the repository root",
+            str(context.exception),
+        )
+
+    def test_parent_traversal_outside_repository_is_rejected(self):
+        self.fixture.catalogs["ads"][0]["ad"] = "../Outside Ad.wav"
+        self.fixture.write("ads")
+
+        with self.assert_catalog_error() as context:
+            load_catalogs(self.fixture.root)
+
+        message = str(context.exception)
+        self.assertIn("ads.json: record 1, field 'ad'", message)
+        self.assertIn("resolves outside the repository root", message)
+        self.assertNotIn("referenced audio file does not exist", message)
+
+    def test_normalized_relative_path_inside_repository_is_accepted(self):
+        self.fixture.catalogs["ads"][0]["ad"] = (
+            "assets/ads/../ads/Test Ad.mP3"
+        )
+        self.fixture.write("ads")
+
+        catalogs = load_catalogs(self.fixture.root)
+
+        self.assertEqual(catalogs.ads[0].ad, "assets/ads/../ads/Test Ad.mP3")
 
     def test_unknown_song_reference(self):
         unknown_song = "assets/songs/Unknown Song.wav"
@@ -259,6 +363,38 @@ class CatalogLoaderTests(unittest.TestCase):
         self.assertIn("songs.json: record 1, field 'artist'", message)
         self.assertIn("ads.json: record 1, field 'ad'", message)
         self.assertIn("ad_intros.json: record 1, field 'ad_intro'", message)
+
+        with self.assert_catalog_error() as repeated_context:
+            load_catalogs(self.fixture.root)
+        self.assertEqual(message, str(repeated_context.exception))
+
+    def test_one_invalid_path_reports_one_underlying_problem(self):
+        self.fixture.catalogs["ads"][0]["ad"] = "assets/ads/Bad.ogg"
+        self.fixture.write("ads")
+
+        with self.assert_catalog_error() as context:
+            load_catalogs(self.fixture.root)
+
+        matching_issues = [
+            issue
+            for issue in context.exception.issues
+            if issue.catalog.value == "ads"
+            and issue.record == 1
+            and issue.field == "ad"
+        ]
+        self.assertEqual(len(matching_issues), 1)
+        self.assertIn("unsupported audio extension", matching_issues[0].reason)
+
+    def test_all_five_catalogs_are_checked_in_one_load(self):
+        (self.fixture.root / "data" / "songs.json").write_text("[{", encoding="utf-8")
+        (self.fixture.root / "data" / "ads.json").unlink()
+
+        with self.assert_catalog_error() as context:
+            load_catalogs(self.fixture.root)
+
+        message = str(context.exception)
+        self.assertIn("songs.json", message)
+        self.assertIn("ads.json", message)
 
 
 if __name__ == "__main__":

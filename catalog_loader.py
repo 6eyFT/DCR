@@ -3,7 +3,7 @@
 import json
 from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -178,6 +178,29 @@ def _validate_value(issues, catalog, record_number, record, field, expected_type
 
 
 def _validate_audio_path(issues, catalog, record_number, field, value, project_root):
+    candidate = Path(value)
+    if candidate.is_absolute() or PureWindowsPath(value).is_absolute():
+        _add_issue(
+            issues,
+            catalog,
+            record_number,
+            field,
+            "must be relative to the repository root; absolute paths are not allowed",
+        )
+        return False
+
+    root = Path(project_root).resolve()
+    resolved = (root / candidate).resolve()
+    if not resolved.is_relative_to(root):
+        _add_issue(
+            issues,
+            catalog,
+            record_number,
+            field,
+            "resolves outside the repository root",
+        )
+        return False
+
     extension = Path(value).suffix.lower()
     if extension not in SUPPORTED_AUDIO_EXTENSIONS:
         shown_extension = extension or "<none>"
@@ -189,8 +212,8 @@ def _validate_audio_path(issues, catalog, record_number, field, value, project_r
             field,
             f"unsupported audio extension '{shown_extension}'; expected one of: {supported}",
         )
+        return False
 
-    resolved = resolve_project_path(value, project_root=project_root)
     if not resolved.is_file():
         _add_issue(
             issues,
@@ -199,6 +222,8 @@ def _validate_audio_path(issues, catalog, record_number, field, value, project_r
             field,
             f"referenced audio file does not exist: {resolved}",
         )
+
+    return True
 
 
 def _validate_id(issues, catalog, record_number, record, seen_ids, required):
@@ -314,8 +339,9 @@ def _parse_announcements(data, catalog, media_field, record_type, project_root, 
             _validate_audio_path(
                 issues, catalog, record_number, media_field, media_path, project_root
             )
+        song_path_valid = True
         if song is not None and song_valid:
-            _validate_audio_path(
+            song_path_valid = _validate_audio_path(
                 issues, catalog, record_number, "song", song, project_root
             )
 
@@ -327,7 +353,8 @@ def _parse_announcements(data, catalog, media_field, record_type, project_root, 
                 id=record_id,
             )
             records.append(parsed_record)
-            relationship_records.append((record_number, parsed_record))
+            if song_path_valid:
+                relationship_records.append((record_number, parsed_record))
     return records, relationship_records
 
 
