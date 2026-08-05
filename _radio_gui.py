@@ -10,24 +10,24 @@ import pygame
 from PIL import Image, ImageTk
 
 from audio_runtime import AudioInitializationError, consume_dummy_audio_request, initialize_audio
-from catalog_loader import CatalogValidationError, asset_exists, load_catalogs, resolve_project_path
+from catalog_loader import CatalogValidationError, load_catalogs, resolve_project_path
+from station_scheduler import (
+    AdvertisementBlock,
+    AdvertisementPlaybackOutcome,
+    SongPlaybackOutcome,
+    StationScheduler,
+)
 
 
 class RadioApp:
-    def __init__(self, root, dummy_audio_requested=False):
+    def __init__(self, root, dummy_audio_requested=False, random_source=None):
         initialize_audio("Diamond City Radio GUI", dummy_audio_requested=dummy_audio_requested)
 
         catalogs = load_catalogs()
-        self.songs = catalogs.songs
-        self.intros = catalogs.intros
-        self.outros = catalogs.outros
-        self.ads = catalogs.ads
-        self.ad_intros = catalogs.ad_intros
-
-        self.ad_interval = 10
-        self.cycle_count = 0
-        self.song_history = []
-        self.ad_history = []
+        self.scheduler = StationScheduler(
+            catalogs,
+            random_source if random_source is not None else random.Random(),
+        )
         self.playing = False
         self.current_track_length = 0
 
@@ -119,17 +119,7 @@ class RadioApp:
     def radio_loop(self):
         try:
             while self.playing:
-                next_song = self.get_next_song()
-                self.update_current_track(next_song.track)
-                self.play_intro(next_song)
-                self.play_audio(next_song.track)
-                self.play_outro(next_song)
-                self.cycle_count += 1
-
-                if self.cycle_count >= self.ad_interval:
-                    self.play_ad_intro()
-                    self.play_ad_break()
-                    self.cycle_count = 0
+                self.play_scheduled_block(self.scheduler.next_block())
         except Exception as error:
             self.playing = False
             print(f"Error: {error}")
@@ -152,117 +142,55 @@ class RadioApp:
 
         return True
 
-    def play_ad_break(self):
-        for _ in range(3):
-            self.play_ad()
-
-    def play_ad(self):
-        available_ads = [
-            ad.ad for ad in self.ads if asset_exists(ad.ad) and ad.ad not in self.ad_history
-        ]
-        if not available_ads:
-            self.ad_history = []
-            available_ads = [ad.ad for ad in self.ads if asset_exists(ad.ad)]
-
-        if not available_ads:
-            print("No ads available to play.")
-            return False
-
-        ad_to_play = random.choice(available_ads)
-        print(f"--- Playing Ad: '{ad_to_play}' ---")
-        played = self.play_audio(ad_to_play)
-        if played:
-            self.ad_history.insert(0, ad_to_play)
-            if len(self.ad_history) > 8:
-                self.ad_history.pop()
-        return played
-
-    def play_ad_intro(self):
-        available_ad_intros = [entry.ad_intro for entry in self.ad_intros if asset_exists(entry.ad_intro)]
-        if not available_ad_intros:
-            print("No ad intros available to play.")
-            return False
-
-        ad_intro_to_play = random.choice(available_ad_intros)
-        print(f"Now playing ad intro: '{ad_intro_to_play}'")
-        return self.play_audio(ad_intro_to_play)
-
-    def play_intro(self, song):
-        artist = song.artist
-        song_track = song.track
-
-        intros_for_song = [
-            intro.intro
-            for intro in self.intros
-            if intro.song == song_track and asset_exists(intro.intro)
-        ]
-        intros_for_artist = [
-            intro.intro
-            for intro in self.intros
-            if intro.artist == artist and intro.song is None and asset_exists(intro.intro)
-        ]
-
-        if intros_for_song:
-            choices = intros_for_song
-        elif intros_for_artist:
-            choices = intros_for_artist
+    def play_scheduled_block(self, block):
+        if isinstance(block, AdvertisementBlock):
+            self._play_advertisement_block(block)
         else:
-            print(f"No intro found for song '{song_track}' or artist '{artist}'")
-            return False
+            self._play_song_block(block)
 
-        return self.play_audio(random.choice(choices))
+    def _play_song_block(self, block):
+        self.update_current_track(block.song.track)
 
-    def play_outro(self, song):
-        artist = song.artist
-        song_track = song.track
+        intro_completed = None
+        if block.intro is not None:
+            intro_completed = self.play_audio(block.intro.intro)
 
-        outros_for_song = [
-            outro.outro
-            for outro in self.outros
-            if outro.song == song_track and asset_exists(outro.outro)
-        ]
-        outros_for_artist = [
-            outro.outro
-            for outro in self.outros
-            if outro.artist == artist and outro.song is None and asset_exists(outro.outro)
-        ]
+        song_completed = self.play_audio(block.song.track)
+        outro_completed = None
+        if song_completed and block.outro is not None:
+            outro_completed = self.play_audio(block.outro.outro)
 
-        if outros_for_song and outros_for_artist:
-            choices = random.choice([outros_for_song, outros_for_artist])
-        elif outros_for_song:
-            choices = outros_for_song
-        elif outros_for_artist:
-            choices = outros_for_artist
-        else:
-            print(f"No outro found for song '{song_track}'")
-            return False
+        self.scheduler.report_outcome(
+            block,
+            SongPlaybackOutcome(
+                intro_completed=intro_completed,
+                song_completed=song_completed,
+                outro_completed=outro_completed,
+            ),
+        )
 
-        return self.play_audio(random.choice(choices))
+    def _play_advertisement_block(self, block):
+        print(f"Now playing ad intro: '{block.intro.ad_intro}'")
+        intro_completed = self.play_audio(block.intro.ad_intro)
+        if not intro_completed:
+            self.scheduler.report_outcome(
+                block,
+                AdvertisementPlaybackOutcome(
+                    intro_completed=False,
+                    advertisement_completed=None,
+                ),
+            )
+            return
 
-    def get_next_song(self):
-        available_songs_to_play = [
-            song
-            for song in self.songs
-            if asset_exists(song.track) and song.track not in self.song_history
-        ]
-
-        if not available_songs_to_play:
-            self.song_history = self.song_history[:1]
-            available_songs_to_play = [
-                song
-                for song in self.songs
-                if asset_exists(song.track) and song.track not in self.song_history
-            ]
-
-        if not available_songs_to_play:
-            raise RuntimeError("No playable songs found in data/songs.json.")
-
-        next_song = random.choice(available_songs_to_play)
-        self.song_history.insert(0, next_song.track)
-        if len(self.song_history) > 20:
-            self.song_history.pop()
-
-        return next_song
+        print(f"--- Playing Ad: '{block.advertisement.ad}' ---")
+        advertisement_completed = self.play_audio(block.advertisement.ad)
+        self.scheduler.report_outcome(
+            block,
+            AdvertisementPlaybackOutcome(
+                intro_completed=True,
+                advertisement_completed=advertisement_completed,
+            ),
+        )
 
 
 def main(argv=None):
