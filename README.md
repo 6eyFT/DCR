@@ -2,6 +2,28 @@
 
 Diamond City Radio is a small custom Python radio app inspired by Fallout's in-world station format. It plays a local library of songs, DJ intros/outros, and ad breaks through either a console autoplay script or a Tkinter GUI.
 
+## Private shared-station prototype
+
+The browser player connects to one continuously running station, using the existing
+catalog loader, scheduler, and event planner. All three players share one block
+executor. Catalogs and local media stay unchanged.
+
+With the Python/Poetry setup below and system `liquidsoap` (tested with 2.2.4) and
+`ffmpeg` installed:
+
+```bash
+# Clean-clone demo: generates labeled musical test signals in /tmp.
+poetry run python station_web.py --demo
+
+# Real station: uses the existing data/ and assets/ directories.
+poetry run python station_web.py
+```
+
+Open **http://127.0.0.1:8080** on the machine running the process. This is a local
+address, not a hosted URL. Pause affects only your device; Tune In reconnects to
+the live broadcast. See [setup and validation](docs/private-station.md) for an
+external media root, private remote access, broadcast rules, and limitations.
+
 ## Canonical Local Workflow
 
 This repo uses:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import math
 import socket
@@ -17,6 +18,17 @@ from playback_events import MediaType, PlaybackEvent
 
 PROTOCOL_VERSION = 1
 MAX_MESSAGE_BYTES = 1024 * 1024
+
+
+def control_address(endpoint):
+    """Keep Unix sockets by default; explicit TCP is restricted to loopback."""
+    value = str(endpoint)
+    if value.startswith("tcp:"):
+        host, port = value[4:].rsplit(":", 1)
+        if host != "127.0.0.1" or not 0 <= int(port) <= 65535:
+            raise ValueError("control TCP endpoint must use 127.0.0.1")
+        return socket.AF_INET, (host, int(port))
+    return socket.AF_UNIX, value
 
 
 class StreamingResultStatus(str, Enum):
@@ -134,6 +146,7 @@ def send_bridge_command(
     command: dict[str, object],
     *,
     timeout: float = 5.0,
+    token: str | None = None,
 ) -> dict[str, object]:
     """Exchange one JSON-lines request with a running adapter broker."""
 
@@ -141,11 +154,14 @@ def send_bridge_command(
         "protocol_version": PROTOCOL_VERSION,
         **command,
     }
+    if token is not None:
+        wire_command["token"] = token
     encoded = (json.dumps(wire_command, ensure_ascii=False) + "\n").encode("utf-8")
 
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+    family, address = control_address(socket_path)
+    with socket.socket(family, socket.SOCK_STREAM) as client:
         client.settimeout(timeout)
-        client.connect(str(socket_path))
+        client.connect(address)
         client.sendall(encoded)
         response = _receive_json_line(client)
 
@@ -170,7 +186,8 @@ class LiquidsoapStreamingAdapter:
 
     The adapter deliberately owns no station policy. ``play`` allows only one
     in-flight event, while short-lived bridge clients fetch or report that
-    event through a versioned JSON-lines protocol over a Unix-domain socket.
+    event through a versioned JSON-lines protocol over a Unix-domain socket
+    or an explicitly configured loopback TCP endpoint.
     """
 
     def __init__(
@@ -180,6 +197,7 @@ class LiquidsoapStreamingAdapter:
         start_timeout: float = 30.0,
         result_timeout: float = 3600.0,
         event_wait_timeout: float = 1.0,
+        token: str | None = None,
     ):
         if start_timeout <= 0:
             raise ValueError("start_timeout must be positive")
@@ -188,7 +206,10 @@ class LiquidsoapStreamingAdapter:
         if event_wait_timeout <= 0:
             raise ValueError("event_wait_timeout must be positive")
 
-        self.socket_path = Path(socket_path)
+        family, address = control_address(socket_path)
+        self.socket_path = str(socket_path) if family == socket.AF_INET else Path(socket_path)
+        self._unix_socket = family == socket.AF_UNIX
+        self._token = token
         self._start_timeout = start_timeout
         self._result_timeout = result_timeout
         self._event_wait_timeout = event_wait_timeout
@@ -198,15 +219,18 @@ class LiquidsoapStreamingAdapter:
         self._closed = False
         self._next_event_number = 1
 
-        if self.socket_path.exists():
+        if self._unix_socket and self.socket_path.exists():
             raise FileExistsError(
                 f"streaming socket path already exists: {self.socket_path}"
             )
-        self.socket_path.parent.mkdir(parents=True, exist_ok=True)
+        if self._unix_socket:
+            self.socket_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self._server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self._server = socket.socket(family, socket.SOCK_STREAM)
         try:
-            self._server.bind(str(self.socket_path))
+            self._server.bind(address)
+            if not self._unix_socket:
+                self.socket_path = f"tcp:127.0.0.1:{self._server.getsockname()[1]}"
             self._server.listen(4)
             self._server.settimeout(0.2)
         except OSError:
@@ -300,10 +324,24 @@ class LiquidsoapStreamingAdapter:
 
         self._server.close()
         self._thread.join(timeout=2.0)
-        try:
-            self.socket_path.unlink()
-        except FileNotFoundError:
-            pass
+        if self._unix_socket:
+            self.socket_path.unlink(missing_ok=True)
+
+    def now_playing(self) -> dict[str, object] | None:
+        """Snapshot confirmed playback, never queued content or private paths."""
+        with self._condition:
+            pending = self._pending
+            if pending is None or pending.state != "started" or pending.result is not None:
+                return None
+            event = pending.event
+            return {
+                "event_id": pending.event_id,
+                "title": event.display_title,
+                "artist": event.artist,
+                "media_type": event.media_type.value,
+                "associated_song_title": event.associated_song_title,
+                "elapsed": event.start_offset + time.monotonic() - pending.started_at,
+            }
 
     def _serve(self) -> None:
         while True:
@@ -326,10 +364,11 @@ class LiquidsoapStreamingAdapter:
 
     def _handle_connection(self, connection: socket.socket) -> None:
         with connection:
+            connection.settimeout(10.0)
             try:
                 request = _receive_json_line(connection)
                 response = self._handle_command(request)
-            except (StreamingProtocolError, UnicodeError, json.JSONDecodeError) as error:
+            except (StreamingProtocolError, UnicodeError, json.JSONDecodeError, OSError) as error:
                 response = {"type": "error", "reason": str(error)}
             try:
                 connection.sendall(
@@ -343,6 +382,10 @@ class LiquidsoapStreamingAdapter:
     def _handle_command(self, request: object) -> dict[str, object]:
         if not isinstance(request, dict):
             raise StreamingProtocolError("bridge request must be a JSON object")
+        if self._token is not None and not hmac.compare_digest(
+            str(request.get("token", "")).encode(), self._token.encode()
+        ):
+            raise StreamingProtocolError("invalid control token")
         if request.get("protocol_version") != PROTOCOL_VERSION:
             raise StreamingProtocolError(
                 f"unsupported protocol version: {request.get('protocol_version')!r}"

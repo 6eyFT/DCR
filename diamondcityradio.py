@@ -6,14 +6,10 @@ import pygame
 
 from audio_runtime import AudioInitializationError, consume_dummy_audio_request, initialize_audio
 from catalog_loader import CatalogValidationError, load_catalogs, resolve_project_path
-from playback_events import MediaType, PlaybackPlanner
+from playback_events import PlaybackPlanner
+from block_player import BlockPlayer
 from pygame_duration import PygameDurationProvider
-from station_scheduler import (
-    AdvertisementBlock,
-    AdvertisementPlaybackOutcome,
-    SongPlaybackOutcome,
-    StationScheduler,
-)
+from station_scheduler import StationScheduler
 
 
 class RadioApp:
@@ -72,64 +68,8 @@ class RadioApp:
         return True
 
     def play_scheduled_block(self, block):
-        if isinstance(block, AdvertisementBlock):
-            self._play_advertisement_block(block)
-        else:
-            self._play_song_block(block)
-
-    def _play_song_block(self, block):
-        events = self.playback_planner.plan(block)
-        intro_event = next(
-            (event for event in events if event.media_type is MediaType.INTRO),
-            None,
-        )
-        song_event = next(
-            event for event in events if event.media_type is MediaType.SONG
-        )
-        outro_event = next(
-            (event for event in events if event.media_type is MediaType.OUTRO),
-            None,
-        )
-
-        intro_completed = None
-        if intro_event is not None:
-            intro_completed = self.play_event(intro_event)
-
-        song_completed = self.play_event(song_event)
-        outro_completed = None
-        if song_completed and outro_event is not None:
-            outro_completed = self.play_event(outro_event)
-
-        self.scheduler.report_outcome(
-            block,
-            SongPlaybackOutcome(
-                intro_completed=intro_completed,
-                song_completed=song_completed,
-                outro_completed=outro_completed,
-            ),
-        )
-
-    def _play_advertisement_block(self, block):
-        intro_event, advertisement_event = self.playback_planner.plan(block)
-        intro_completed = self.play_event(intro_event)
-        if not intro_completed:
-            self.scheduler.report_outcome(
-                block,
-                AdvertisementPlaybackOutcome(
-                    intro_completed=False,
-                    advertisement_completed=None,
-                ),
-            )
-            return
-
-        advertisement_completed = self.play_event(advertisement_event)
-        self.scheduler.report_outcome(
-            block,
-            AdvertisementPlaybackOutcome(
-                intro_completed=True,
-                advertisement_completed=advertisement_completed,
-            ),
-        )
+        outcome = BlockPlayer(self.playback_planner, self.play_event).play(block)
+        self.scheduler.report_outcome(block, outcome)
 
     def autoplay(self):
         print("Radio is now simulating...")

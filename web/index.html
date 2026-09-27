@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Diamond City Radio</title>
+  <meta name="description" content="Tune in to one continuous Diamond City Radio broadcast.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/player.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><span class="mark" aria-hidden="true">◈</span><span>DIAMOND CITY<br><b>RADIO SERVICE</b></span><span class="edition">PRIVATE STATION</span></header>
+    <section class="receiver" aria-labelledby="station-title">
+      <div class="topline"><span>COMMONWEALTH BROADCASTING</span><span id="on-air">CONNECTING</span></div>
+      <h1 id="station-title">Good music.<br>Out here, too.</h1>
+      <p class="intro">A little company from Diamond City. Tune in wherever the broadcast takes you.</p>
+      <div class="dial" aria-hidden="true"><span>88</span><span>92</span><span>96</span><span class="needle">◆</span><span>104</span><span>108</span></div>
+      <div class="screen">
+        <div class="screen-label"><span>DIAMOND CITY RADIO</span><span id="kind">STANDBY</span></div>
+        <div aria-live="polite" aria-atomic="true"><h2 id="title">Finding the signal…</h2><p id="artist">One station. One shared broadcast.</p></div>
+        <div class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="controls">
+        <button id="tune" type="button" disabled>Tune In</button>
+        <div class="volume"><label for="volume">VOLUME <output id="volume-value">70%</output></label><input id="volume" type="range" min="0" max="100" value="70" aria-label="Volume"></div>
+      </div>
+      <p id="play-status" role="status">Connecting to the station…</p>
+      <p id="demo" class="notice" hidden>DEMO BROADCAST · Generated musical test signals. Your private audio library is not loaded.</p>
+    </section>
+    <footer><span class="live-dot" aria-hidden="true"></span><p>The station keeps playing when you pause.<br>Tune in again to rejoin the live broadcast.</p><span class="footer-mark" aria-hidden="true">DCR</span></footer>
+  </main>
+  <audio id="audio" preload="none"></audio>
+</body>
+</html>

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import os
 from pathlib import Path
 
 from catalog_loader import PROJECT_ROOT
@@ -63,8 +64,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--socket",
         required=True,
-        type=Path,
-        help="Unix-domain socket exposed by LiquidsoapStreamingAdapter",
+        help="Unix socket path or tcp:127.0.0.1:PORT exposed by the adapter",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "next":
-            response = send_bridge_command(args.socket, {"command": "next"})
+            response = send_bridge_command(args.socket, {"command": "next"}, token=os.environ.get("DCR_CONTROL_TOKEN"))
             if response.get("type") in {"no_event", "shutdown"}:
                 print("DCR_NO_EVENT")
                 return 0
@@ -124,7 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             command = {"command": "shutdown"}
 
-        response = send_bridge_command(args.socket, command)
+        response = send_bridge_command(args.socket, command, token=os.environ.get("DCR_CONTROL_TOKEN"))
         if response.get("type") != "ack":
             raise RuntimeError(f"broker rejected command: {response!r}")
         return 0

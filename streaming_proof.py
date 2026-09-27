@@ -217,11 +217,12 @@ def run_proof() -> int:
         received: list[PlaybackEvent] = []
 
         with LiquidsoapStreamingAdapter(
-            socket_path,
+            "tcp:127.0.0.1:0" if os.environ.get("DCR_PROOF_TCP") == "1" else socket_path,
             start_timeout=5.0,
             result_timeout=5.0,
             event_wait_timeout=1.0,
         ) as adapter:
+            socket_path = adapter.socket_path
             engine = threading.Thread(
                 target=run_loopback_engine,
                 args=(socket_path, received),
@@ -488,11 +489,12 @@ def run_sequence_probe(
     socket_path = root / f"sequence-{initial_format}.sock"
     log_path = root / f"sequence-{initial_format}.log"
     with LiquidsoapStreamingAdapter(
-        socket_path,
+        "tcp:127.0.0.1:0" if os.environ.get("DCR_PROOF_TCP") == "1" else socket_path,
         start_timeout=10.0,
         result_timeout=10.0,
         event_wait_timeout=0.25,
     ) as adapter:
+        socket_path = adapter.socket_path
         runtime = start_liquidsoap(
             adapter, socket_path, output_path, log_path, liquidsoap
         )
@@ -600,11 +602,12 @@ def run_failure_probe(
     socket_path = root / "failure.sock"
 
     with LiquidsoapStreamingAdapter(
-        socket_path,
+        "tcp:127.0.0.1:0" if os.environ.get("DCR_PROOF_TCP") == "1" else socket_path,
         start_timeout=8.0,
         result_timeout=8.0,
         event_wait_timeout=0.25,
     ) as adapter:
+        socket_path = adapter.socket_path
         runtime = start_liquidsoap(adapter, socket_path, output, log, liquidsoap)
         try:
             missing_result = adapter.play(
@@ -658,11 +661,12 @@ def run_restart_probe(root: Path, *, liquidsoap: str) -> dict[str, object]:
     socket_path = root / "restart.sock"
 
     with LiquidsoapStreamingAdapter(
-        socket_path,
+        "tcp:127.0.0.1:0" if os.environ.get("DCR_PROOF_TCP") == "1" else socket_path,
         start_timeout=10.0,
         result_timeout=10.0,
         event_wait_timeout=0.25,
     ) as adapter:
+        socket_path = adapter.socket_path
         first_log = root / "restart-first.log"
         first_runtime = start_liquidsoap(
             adapter,

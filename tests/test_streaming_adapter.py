@@ -11,6 +11,7 @@ import streaming_adapter
 from playback_events import MediaType, PlaybackEvent
 from streaming_adapter import (
     LiquidsoapStreamingAdapter,
+    control_address,
     StreamingResultStatus,
     deserialize_event,
     send_bridge_command,
@@ -115,11 +116,12 @@ class SocketBoundaryTests(unittest.TestCase):
         self.temp = TemporaryDirectory()
         self.socket_path = Path(self.temp.name) / "station.sock"
         self.adapter = LiquidsoapStreamingAdapter(
-            self.socket_path,
+            "tcp:127.0.0.1:0",
             start_timeout=0.25,
             result_timeout=0.25,
             event_wait_timeout=0.25,
         )
+        self.socket_path = self.adapter.socket_path
 
     def tearDown(self):
         self.adapter.close()
@@ -274,8 +276,9 @@ class SocketBoundaryTests(unittest.TestCase):
         self.assertIn("stopped reporting", result.detail)
 
     def test_broker_accepts_reconnection_after_dropped_control_client(self):
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as dropped:
-            dropped.connect(str(self.socket_path))
+        family, address = control_address(self.socket_path)
+        with socket.socket(family, socket.SOCK_STREAM) as dropped:
+            dropped.connect(address)
             dropped.sendall(b'{"protocol_version": 1, "command":')
 
         submission = AsyncSubmission(self.adapter, event())
@@ -333,7 +336,8 @@ class SocketBoundaryTests(unittest.TestCase):
         result = submission.finish()
 
         self.assertEqual(result.status, StreamingResultStatus.INTERRUPTED)
-        self.assertFalse(self.socket_path.exists())
+        with self.assertRaises(OSError):
+            send_bridge_command(self.socket_path, {"command": "next"})
 
 
 class SeparationTests(unittest.TestCase):

@@ -1,5 +1,16 @@
 # Tasklog
 
+## Completed: private shared-station prototype (2026-09-26)
+
+- Reused the existing scheduler; consolidated duplicated block execution across
+  console, GUI, and streaming paths in `block_player.py`.
+- Added loopback-only browser player and shared Liquidsoap HTTP output, using
+  generated demo audio when explicitly requested. No catalog or media edits.
+- Verified real two-listener audio equivalence, late joining, zero-listener
+  progression, ad cadence, private routes, and source-loss handling.
+- See [private-station.md](private-station.md) for evidence, run instructions,
+  private hosting requirements, and the blocked browser/private-media checks.
+
 This backlog is for work that should improve Diamond City Radio over time without pretending the project is already production-grade. Items here are intentionally pragmatic and scoped for a solo owner returning to an older codebase.
 
 ## Immediate / Stabilization
